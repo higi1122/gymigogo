@@ -1,0 +1,1717 @@
+<!doctype html>
+<html lang="zh-HK" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
+body { font-family: 'Nunito', sans-serif; }
+.tab-active { color: #3b82f6; background: #eff6ff; }
+.tab-inactive { color: #94a3b8; }
+.progress-bar { transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.card-enter { animation: cardIn 0.3s ease-out; }
+@keyframes cardIn { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.float-anim { animation: float 3s ease-in-out infinite; }
+.seg-btn { padding: 6px 12px; border-radius: 9999px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; white-space: nowrap; }
+.seg-active { background: #3b82f6; color: white; }
+.seg-inactive { background: #e2e8f0; color: #64748b; }
+input, select, textarea { font-size: 16px !important; }
+.reward-card { background: linear-gradient(135deg, #fef3c7, #fde68a, #fcd34d); border-radius: 16px; }
+.reward-card-locked { background: linear-gradient(135deg, #f1f5f9, #e2e8f0); border-radius: 16px; }
+.voucher-bg { background: linear-gradient(135deg, #dbeafe, #bfdbfe, #93c5fd); }
+.cal-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin: 0 1px; }
+.page-slide { transition: opacity 0.2s ease; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.toast-msg { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; padding: 12px 24px; border-radius: 12px; font-weight: 600; animation: toastIn 0.3s ease-out; }
+@keyframes toastIn { from { opacity:0; transform: translateX(-50%) translateY(-20px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+.modal-box { background: white; border-radius: 20px; padding: 24px; max-width: 340px; width: 90%; text-align: center; }
+</style>
+  <script>
+tailwind.config = {
+  theme: { extend: { colors: {
+    sky1: '#e0f2fe', sky2: '#bae6fd', sky3: '#7dd3fc', primary: '#3b82f6', primaryDk: '#2563eb',
+    warm1: '#fef3c7', warm2: '#fde68a', warm3: '#f59e0b',
+    peach: '#fed7aa', pink1: '#fce7f3', mint: '#d1fae5'
+  }}}
+}
+</script>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full bg-sky1">
+  <div id="app" class="h-full w-full flex flex-col overflow-hidden" style="display:none;">
+   <!-- Header -->
+   <header id="appHeader" class="bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0">
+    <div class="flex items-center gap-2">
+     <span class="text-2xl">🏋️</span> <span id="headerTitle" class="font-extrabold text-primary text-lg">Gymigogo</span>
+    </div>
+    <div class="flex items-center gap-2">
+     <span id="pointsBadge" class="bg-warm2 text-warm3 font-bold text-sm px-3 py-1 rounded-full flex items-center gap-1">⭐ <span id="totalPoints">0</span></span> <span id="userBadge" class="bg-sky2 text-primary font-semibold text-sm px-3 py-1 rounded-full truncate max-w-[100px]"></span>
+    </div>
+   </header><!-- Pages -->
+   <main id="mainContent" class="flex-1 overflow-y-auto overflow-x-hidden">
+    <!-- Page 1: Calendar -->
+    <div id="page-calendar" class="page-slide p-4 pb-24 hidden"></div><!-- Page 2: Shop -->
+    <div id="page-shop" class="page-slide p-4 pb-24 hidden"></div><!-- Page 3: History -->
+    <div id="page-history" class="page-slide p-4 pb-24 hidden"></div><!-- Page 4: Settings -->
+<div id="page-settings" class="page-slide p-4 pb-24 hidden"></div>
+    <div id="page-admin" class="page-slide p-4 pb-24 hidden"></div>
+   </main><!-- Bottom Nav -->
+   <nav class="bg-white border-t border-sky2 flex justify-around items-center py-2 flex-shrink-0">
+    <button onclick="switchPage('calendar')" id="nav-calendar" class="flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all"> <i data-lucide="calendar" class="w-5 h-5"></i><span class="text-xs font-semibold">日曆</span> </button> <button onclick="switchPage('shop')" id="nav-shop" class="flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all"> <i data-lucide="gift" class="w-5 h-5"></i><span class="text-xs font-semibold">商店</span> </button> <button onclick="switchPage('history')" id="nav-history" class="flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all"> <i data-lucide="list" class="w-5 h-5"></i><span class="text-xs font-semibold">記錄</span> </button> <button onclick="switchPage('settings')" id="nav-settings" class="flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all"> <i data-lucide="settings" class="w-5 h-5"></i><span class="text-xs font-semibold">設定</span> </button>
+  <button onclick="switchPage('admin')" id="nav-admin" class="hidden flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all"> <i data-lucide="shield" class="w-5 h-5"></i><span class="text-xs font-semibold">管理</span> </button>
+ </nav>
+  </div><!-- Login Screen -->
+  <div id="loginScreen" class="h-full w-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-sky1 to-sky2">
+   <div class="float-anim text-7xl mb-4">
+    🏋️‍♀️
+   </div>
+   <h1 class="text-3xl font-extrabold text-primary mb-1">Gymigogo</h1>
+   <p class="text-sky3 font-semibold mb-8">Work(out) Hard Play Hard✨</p>
+<div class="bg-white rounded-2xl shadow-lg p-6 w-full max-w-sm text-left">
+    <div class="mb-4">
+      <label class="block text-sm font-bold text-slate-600 mb-2">帳號 (ID)</label> 
+      <input id="nameInput" type="text" placeholder="輸入帳號..." class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition-colors font-semibold" maxlength="20">
+    </div>
+    <div class="mb-4">
+      <label class="block text-sm font-bold text-slate-600 mb-2">密碼</label> 
+      <input id="pwdInput" type="password" placeholder="輸入密碼..." class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition-colors font-semibold">
+    </div>
+    <p id="loginError" class="text-red-400 text-sm font-semibold mb-2 hidden text-center">請輸入帳號同密碼</p>
+    <button id="loginBtn" onclick="doLogin()" class="w-full bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition-colors"> 開始旅程 🚀 </button>
+   </div>
+  </div><!-- Modal Container -->
+  <div id="modalContainer"></div>
+  <script>
+// ========== STATE ==========
+let allRecords = [];
+let currentPage = 'calendar';
+let calYear, calMonth, selectedDate = null;
+let filterExercise = '';
+let editingRecord = null;
+let historyEditMode = false;
+let selectedRecords = new Set();
+const now = new Date();
+calYear = now.getFullYear();
+calMonth = now.getMonth();
+
+
+
+// ========== EXERCISES DATA ==========
+const defaultExerciseData = {
+  strength: {
+    label: '💪 力量', subcats: {
+      '胸': ['啞鈴臥推','槓鈴臥推','上斜啞鈴臥推','飛鳥機','Cable 夾胸','掌上壓'],
+      '背': ['引體向上','Cable 下拉','啞鈴划船','槓鈴划船','坐姿划船','T-Bar 划船'],
+      '腿': ['深蹲','腿推機','哈克深蹲','腿伸展機','腿彎舉機','小腿提踵'],
+      '肩': ['啞鈴肩推','槓鈴肩推','側平舉','前平舉','反向飛鳥','Face Pull'],
+      '手臂': ['啞鈴二頭彎舉','Cable 二頭彎舉','三頭下壓','過頭三頭伸展','錘式彎舉']
+    }
+  },
+  cardio: {
+    label: '🏃 有氧', subcats: {
+      '器械': ['跑步機','爬山機','太空漫步機','單車機','划船機'],
+      '戶外': ['跳繩','行山','踩單車','跑步']
+    }
+  },
+  hiit: { label: '🔥 HIIT', subcats: { 'HIIT': ['Tabata','AMRAP','EMOM','Circuit Training','Burpee Challenge'] }},
+  functional: {
+    label: '🧘 功能性', subcats: {
+      '瑜伽': ['流瑜伽','陰瑜伽','力量瑜伽'],
+      '徒手': ['Plank','山羊挺身','箱跳','波比跳','熊爬'],
+      '拉伸': ['全身拉伸','上身拉伸','下身拉伸','髖關節活動']
+    }
+  }
+};
+
+// 這是會被動態修改的變量
+let exerciseData = JSON.parse(JSON.stringify(defaultExerciseData));
+
+// 新增：儲存自訂項目到 Firebase
+async function saveCustomExercises() {
+  if(!currentUser) return;
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("settings").doc("preferences").set({
+      exerciseData: exerciseData
+    }, { merge: true });
+    console.log("自訂項目已同步至 Firebase");
+  } catch (e) {
+    console.error("儲存失敗", e);
+    showToast("同步失敗", "error");
+  }
+}
+
+
+// Category colors for calendar dots
+const catColors = { strength: '#3b82f6', cardio: '#22c55e', hiit: '#ef4444', functional: '#a855f7' };
+
+// ========== REWARDS ==========
+const defaultRewards = [
+  { id:'r0', name:'測試獎勵', emoji:'🎲', cost:0, desc:'免費測試獎勵項目' },
+  { id:'r1', name:'零食一份', emoji:'🍪', cost:30, desc:'辛苦咗，食個零食獎勵自己！' },
+  { id:'r2', name:'珍珠奶茶', emoji:'🧋', cost:60, desc:'一杯奶茶嘅快樂～' },
+  { id:'r3', name:'甜品', emoji:'🍰', cost:100, desc:'蛋糕時間到！' },
+  { id:'r4', name:'日式拉麵', emoji:'🍜', cost:150, desc:'來一碗熱騰騰嘅拉麵！' }
+];
+
+let rewards = JSON.parse(JSON.stringify(defaultRewards));
+
+// ========== POINTS CALCULATION ==========
+function calcPoints(rec) {
+  if(rec.record_type !== 'workout') return 0;
+  const cat = rec.category;
+  if(cat === 'strength') return Math.max(5, Math.round((rec.weight||0) * (rec.reps||0) * (rec.sets||1) / 50));
+  if(cat === 'cardio') return Math.max(5, Math.round(parseDurationMin(rec.duration) * 1.5));
+  if(cat === 'hiit') return Math.max(8, Math.round(parseDurationMin(rec.duration) * 2.5));
+  if(cat === 'functional') return Math.max(5, Math.round((rec.sets||1) * (rec.reps||1) * 0.8));
+  return 5;
+}
+function parseDurationMin(d) {
+  if(!d) return 0;
+  const p = d.split(':');
+  return (parseInt(p[0])||0) + (parseInt(p[1])||0)/60;
+}
+
+// 修改：支援 Admin 讀取及特別扣分/加分機制
+function getTotalPoints(recordsArr = allRecords, rewardsArr = rewards) {
+  let earned = 0, spent = 0;
+  recordsArr.forEach(r => {
+    // 運動得分，或 Admin 手動調整嘅分數
+    if(r.record_type === 'workout' || r.record_type === 'point_adjustment') earned += (r.points || 0);
+    // 換領扣分 (優先讀取記錄中寫死嘅 cost，防商店改價)
+    if(r.record_type === 'redemption') spent += (r.cost !== undefined ? r.cost : (rewardsArr.find(rw=>rw.id===r.reward_id)?.cost || 0));
+  });
+  return { earned, spent, available: earned - spent };
+}
+
+
+// ========== FIREBASE INIT & LOGIN ==========
+const firebaseConfig = {
+  apiKey: "AIzaSyA_0phFVH-xuVud2TPUQ79-bUUweqQY6Ro",
+  authDomain: "gymigogo.firebaseapp.com",
+  projectId: "gymigogo",
+  storageBucket: "gymigogo.firebasestorage.app",
+  messagingSenderId: "458661529135",
+  appId: "1:458661529135:web:b56abfe13097d3cbb728da"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let currentUser = null;
+let recordsUnsubscribe = null;
+
+async function doLogin() {
+  const nameInput = document.getElementById('nameInput');
+  const pwdInput = document.getElementById('pwdInput');
+  const userId = nameInput.value.trim();
+  const password = pwdInput ? pwdInput.value : '';
+  const errorMsg = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  
+  if(!userId || !password) {
+    errorMsg.textContent = '請輸入帳號同密碼';
+    errorMsg.classList.remove('hidden');
+    return;
+  }
+  errorMsg.classList.add('hidden');
+  
+  // 繼續保留無感登入嘅魔法：如果用家無打 @，自動補齊 @gymigogo.com
+  const email = userId.includes('@') ? userId : `${userId.toLowerCase()}@gymigogo.com`;
+  
+  btn.disabled = true;
+  btn.textContent = '驗證中...';
+
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch (error) {
+    console.error(error);
+    if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+      showToast('帳號或密碼錯誤', 'error');
+    } else {
+      showToast('登入失敗，請檢查網絡連線', 'error');
+    }
+    btn.disabled = false;
+    btn.textContent = '開始🚀';
+  }
+}
+
+function doLogout() {
+  auth.signOut();
+}
+
+// 監聽登入狀態變化 (取代舊的 showApp)
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUser = user;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    
+    const displayId = user.displayName || user.email.split('@')[0];
+    document.getElementById('userBadge').textContent = displayId;
+    
+    // --- 檢查是否 Admin，顯示按鈕 ---
+    const isAdmin = user.email === 'adming@gymigogo.com';
+    const navAdmin = document.getElementById('nav-admin');
+    if(isAdmin) {
+      navAdmin.classList.remove('hidden'); navAdmin.classList.add('flex');
+    } else {
+      navAdmin.classList.add('hidden'); navAdmin.classList.remove('flex');
+    }
+
+    // --- 儲存用戶資料俾 Admin 列表睇 ---
+    db.collection("users").doc(user.uid).set({ displayId: displayId, email: user.email }, { merge: true });
+    
+    // --- 載入專屬自訂清單及專屬商店 ---
+    db.collection("users").doc(user.uid).collection("settings").doc("preferences").get().then(doc => {
+      if (doc.exists && doc.data().exerciseData) exerciseData = doc.data().exerciseData;
+      else exerciseData = JSON.parse(JSON.stringify(defaultExerciseData));
+    });
+
+    db.collection("users").doc(user.uid).collection("settings").doc("rewards").get().then(doc => {
+      if (doc.exists && doc.data().rewards) rewards = doc.data().rewards;
+      else rewards = JSON.parse(JSON.stringify(defaultRewards));
+      if(currentPage === 'shop') renderShop();
+    });
+
+    // 實時載入資料庫數據
+    if(recordsUnsubscribe) recordsUnsubscribe();
+    recordsUnsubscribe = db.collection("users").doc(user.uid).collection("records")
+      .onSnapshot(snapshot => {
+        allRecords = snapshot.docs.map(doc => ({ ...doc.data(), __backendId: doc.id }));
+        document.getElementById('totalPoints').textContent = getTotalPoints().available;
+        if(currentPage !== 'admin') renderCurrentPage();
+      });
+
+    switchPage('calendar');
+    lucide.createIcons();
+} else {
+    currentUser = null;
+    if(recordsUnsubscribe) { recordsUnsubscribe(); recordsUnsubscribe = null; }
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    
+    // 登出後重設登入按鈕狀態，並清空密碼
+    const loginBtn = document.getElementById('loginBtn');
+    if(loginBtn) { 
+      loginBtn.disabled = false; 
+      loginBtn.textContent = '開始旅程 🚀'; 
+    }
+    const pwdInput = document.getElementById('pwdInput');
+    if(pwdInput) pwdInput.value = '';
+  }
+});
+
+// ========== NAVIGATION ==========
+function switchPage(page) {
+  currentPage = page;
+  
+  const pages = ['calendar','shop','history','settings', 'admin'];
+  pages.forEach(p => {
+    // 1. 處理頁面顯示/隱藏
+    const pageEl = document.getElementById('page-'+p);
+    if(pageEl) pageEl.classList.add('hidden');
+    
+    // 2. 處理導航按鈕樣式
+    const navEl = document.getElementById('nav-'+p);
+    if(navEl) {
+      // 獲取目前的 isAdmin 狀態
+      const isAdmin = currentUser && currentUser.email === 'adming@gymigogo.com';
+      
+      // 如果不是 Admin 且是管理按鈕，必須保持隱藏
+      if (p === 'admin' && !isAdmin) {
+        navEl.className = 'hidden flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all tab-inactive';
+      } else {
+        // 根據是否選中，切換 active/inactive
+        const isActive = (p === page);
+        navEl.className = `flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all ${isActive ? 'tab-active' : 'tab-inactive'}`;
+      }
+    }
+  });
+
+  const selectedPageEl = document.getElementById('page-'+page);
+  if(selectedPageEl) selectedPageEl.classList.remove('hidden');
+  
+  renderCurrentPage();
+  lucide.createIcons();
+}
+
+function renderCurrentPage() {
+  if(currentPage === 'calendar') renderCalendar();
+  else if(currentPage === 'shop') renderShop();
+  else if(currentPage === 'history') renderHistory();
+  else if(currentPage === 'settings') renderSettings();
+  else if(currentPage === 'admin') renderAdmin(); // 👈 補上這這一行
+}
+
+// ========== TOAST ==========
+function showToast(msg, type='success') {
+  const colors = { success: 'bg-green-400 text-white', error: 'bg-red-400 text-white', info: 'bg-blue-400 text-white' };
+  const t = document.createElement('div');
+  t.className = `toast-msg ${colors[type]||colors.info}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+// ========== MODAL ==========
+function showModal(html) {
+  document.getElementById('modalContainer').innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">${html}</div>`;
+}
+function closeModal() { document.getElementById('modalContainer').innerHTML = ''; }
+
+// ========== CALENDAR PAGE ==========
+let clipboardWorkout = null;
+let clipboardMode = false;
+
+function renderCalendar() {
+  const el = document.getElementById('page-calendar');
+  const workouts = allRecords.filter(r => r.record_type === 'workout');
+  // Group by date
+  const byDate = {};
+  workouts.forEach(w => {
+    if(!byDate[w.date]) byDate[w.date] = [];
+    byDate[w.date].push(w);
+  });
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+let calHtml = `<div class="flex items-center justify-between mb-3">
+    <div class="flex gap-2">
+      <button onclick="prevMonth()" class="p-2 rounded-xl bg-white shadow-sm hover:bg-sky2 transition"><i data-lucide="chevron-left" class="w-5 h-5 text-primary"></i></button>
+      <button onclick="goToToday()" class="px-3 py-1 rounded-xl bg-white shadow-sm hover:bg-sky2 transition text-primary font-bold text-sm">今日</button>
+    </div>
+    <h2 class="font-extrabold text-lg text-primary">${calYear}年 ${monthNames[calMonth]}</h2>
+    <button onclick="nextMonth()" class="p-2 rounded-xl bg-white shadow-sm hover:bg-sky2 transition"><i data-lucide="chevron-right" class="w-5 h-5 text-primary"></i></button>
+  </div>`;
+
+  calHtml += '<div class="grid grid-cols-7 gap-1 mb-1 text-center">';
+  ['日','一','二','三','四','五','六'].forEach(d => calHtml += `<div class="text-xs font-bold text-slate-400">${d}</div>`);
+  calHtml += '</div><div class="grid grid-cols-7 gap-1">';
+
+  for(let i=0; i<firstDay; i++) calHtml += '<div></div>';
+  for(let d=1; d<=daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayWorkouts = byDate[dateStr] || [];
+    const isToday = dateStr === toDateStr(new Date());
+    const isSelected = dateStr === selectedDate;
+    const hasFW = dayWorkouts.length > 0;
+
+    // Get category tags with colors
+    let allTags = [];
+    if(dayWorkouts.length > 0) {
+      const cats = [...new Set(dayWorkouts.map(w=>w.category))];
+      cats.forEach(cat => {
+        if(cat === 'strength') {
+          const subcats = [...new Set(dayWorkouts.filter(w=>w.category==='strength').map(w=>{
+            const ex = w.exercise;
+            for(const [sc, items] of Object.entries(exerciseData.strength.subcats)) {
+              if(items.includes(ex)) return sc;
+            }
+            return '';
+          }).filter(Boolean))];
+          const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '手臂': 'bg-purple-100 text-purple-700' };
+          subcats.forEach(sc => {
+            allTags.push(`<span class="text-[10px] font-bold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-0.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">${sc}</span>`);
+          });
+        } else {
+          const labels = { cardio: '有氧', hiit: 'HIIT', functional: '功能性' };
+          const colors = { cardio: 'bg-orange-100 text-orange-700', hiit: 'bg-pink-100 text-pink-700', functional: 'bg-indigo-100 text-indigo-700' };
+          allTags.push(`<span class="text-[10px] font-bold ${colors[cat]||'bg-slate-100 text-slate-700'} px-0.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">${labels[cat]||cat}</span>`);
+        }
+      });
+    }
+
+    // Dynamically fit tags based on available space
+    // Create a temporary container to measure actual width
+    let tagHtml = '';
+    let totalWidth = 0;
+    const maxWidth = 135; // Approximate width of cell - padding
+    let displayCount = 0;
+    
+    for(let i = 0; i < allTags.length; i++) {
+      // Each tag is roughly 24-28px wide, gap is 4px
+      const tagWidth = 26 + 4;
+      if(totalWidth + tagWidth > maxWidth && displayCount > 0) break;
+      tagHtml += allTags[i];
+      totalWidth += tagWidth;
+      displayCount++;
+    }
+    
+    const hiddenCount = allTags.length - displayCount;
+    if(hiddenCount > 0) {
+      tagHtml += `<span class="text-[10px] font-bold bg-slate-200 text-slate-600 px-1 py-0.5 rounded-full flex-shrink-0">+${hiddenCount}</span>`;
+    }
+
+    calHtml += `<button onclick="selectDate('${dateStr}')" oncontextmenu="return false;" class="rounded-xl p-1 h-20 flex flex-col items-start justify-start transition-all overflow-hidden ${isSelected?'bg-[#70a7ff] text-white shadow-md':isToday?'bg-sky2 ring-2 ring-primary':'bg-white hover:bg-[#f2faff]'} ${hasFW?'ring-1 ring-sky3':''} ${clipboardMode?'ring-1 ring-green-400 cursor-copy':''}">
+      <span class="text-xs font-bold ${isSelected?'text-white':isToday?'text-primary':'text-slate-700'}">${d}</span>
+      <div class="flex flex-wrap gap-0.5 mt-0.5 w-full overflow-hidden flex-1 content-start">${tagHtml}</div>
+    </button>`;
+  }
+  calHtml += '</div>';
+
+  // Selected date detail
+  let detailHtml = '';
+  if(selectedDate) {
+    const dayW = byDate[selectedDate]||[];
+    detailHtml = `<div class="mt-4 bg-white rounded-2xl shadow-sm p-4 card-enter">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-primary text-lg">${selectedDate}</h3>
+        <div class="flex gap-2">
+          <button onclick="openAddWorkout('${selectedDate}')" class="bg-primary text-white px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1 hover:bg-primaryDk transition">
+            <i data-lucide="plus" class="w-4 h-4"></i> 新增
+          </button>
+          ${clipboardMode ? `<button onclick="cancelClipboard()" class="bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl text-sm font-bold hover:bg-slate-300 transition">取消複製</button>` : ''}
+        </div>
+      </div>`;
+    if(dayW.length === 0) {
+      detailHtml += '<p class="text-slate-400 text-sm text-center py-6">呢日冇訓練記錄 📝</p>';
+    } else {
+      // Group by category
+      const byCategory = {};
+      dayW.forEach(w => {
+        if(!byCategory[w.category]) byCategory[w.category] = [];
+        byCategory[w.category].push(w);
+      });
+
+      // Sort categories
+      const catOrder = ['strength', 'cardio', 'hiit', 'functional'];
+      catOrder.forEach(cat => {
+        if(!byCategory[cat]) return;
+        const items = byCategory[cat];
+        const catLabel = { strength: '💪 力量', cardio: '🏃 有氧', hiit: '🔥 HIIT', functional: '🧘 功能性' }[cat];
+        detailHtml += `<div class="mb-3"><div class="text-xs font-bold text-slate-400 mb-1.5">${catLabel}</div>`;
+
+        items.forEach(w => {
+          let subcatDisplay = '';
+          let cardBgClass = 'bg-sky1 hover:bg-sky2';
+          let textColorClass = 'text-slate-900';
+          
+          if(w.category === 'strength') {
+            for(const [sc, exList] of Object.entries(exerciseData.strength.subcats)) {
+              if(exList.includes(w.exercise)) {
+                const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '手臂': 'bg-purple-100 text-purple-700' };
+                subcatDisplay = `<span class="text-xs font-semibold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded-full">${sc}</span>`;
+                break;
+              }
+            }
+          } else if(w.category === 'cardio') {
+            cardBgClass = 'bg-orange-100 hover:bg-orange-200';
+            textColorClass = 'text-orange-900';
+          } else if(w.category === 'hiit') {
+            cardBgClass = 'bg-pink-100 hover:bg-pink-200';
+            textColorClass = 'text-pink-900';
+          } else if(w.category === 'functional') {
+            cardBgClass = 'bg-indigo-100 hover:bg-indigo-200';
+            textColorClass = 'text-indigo-900';
+          }
+          
+          let linkBtnHtml = '';
+          if (['cardio', 'hiit', 'functional'].includes(w.category) && w.link) {
+            let safeLink = w.link.trim();
+            if(safeLink && !safeLink.startsWith('http')) safeLink = 'https://' + safeLink;
+            linkBtnHtml = `<a href="${safeLink}" target="_blank" onclick="event.stopPropagation()" class="inline-flex items-center gap-1 text-[11px] font-bold bg-white/60 text-slate-700 px-2 py-0.5 rounded-lg hover:bg-white hover:text-primary transition shadow-sm border border-slate-200">
+              <i data-lucide="external-link" class="w-3 h-3"></i> 影片
+            </a>`;
+          }
+
+          detailHtml += `<div class="w-full text-left ${cardBgClass} rounded-xl p-3 mb-2 flex items-start justify-between transition-colors ${textColorClass}">
+            <button onclick="editRecord('${w.__backendId}')" oncontextmenu="showWorkoutMenu(event, '${w.__backendId}')" class="flex-1 flex items-start gap-2 border-none bg-none cursor-pointer text-left">
+              ${subcatDisplay ? `<div class="flex-shrink-0 mt-0.5">${subcatDisplay}</div>` : ''}
+              <div class="flex-1">
+                <div class="font-bold text-sm">${w.exercise}</div>
+                <div class="text-xs opacity-75 mt-1">${formatWorkoutDetail(w)}</div>
+              </div>
+            </button>
+            <div class="flex items-center gap-1.5 flex-shrink-0 ml-2">
+              ${linkBtnHtml}
+              <span class="text-xs font-bold text-warm3 bg-warm1 px-2 py-0.5 rounded-full whitespace-nowrap">+${w.points}⭐</span>
+            </div>
+          </div>`;
+        });
+        detailHtml += '</div>';
+      });
+    }
+    detailHtml += '</div>';
+  }
+
+  el.innerHTML = calHtml + detailHtml;
+  lucide.createIcons();
+}
+
+function toDateStr(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function prevMonth() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} selectedDate=null; renderCalendar(); }
+function nextMonth() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} selectedDate=null; renderCalendar(); }
+// 新增：返去今日嘅功能
+function goToToday() {
+  const d = new Date();
+  calYear = d.getFullYear();
+  calMonth = d.getMonth();
+  selectedDate = toDateStr(d); // 自動揀埋今日，顯示今日嘅詳情
+  renderCalendar();
+}
+
+function selectDate(d) { 
+  if(clipboardMode && clipboardWorkout) {
+    pasteWorkout(d);
+    return;
+  }
+  selectedDate = selectedDate===d ? null : d; 
+  renderCalendar(); 
+}
+
+function formatWorkoutDetail(w) {
+  if(w.category==='strength') return `${w.sets||1} 組 × ${w.reps||0} 次 @ ${w.weight||0}kg`;
+  if(w.category==='cardio') {
+    let s = w.duration||'0:00';
+    if(w.distance) s += ` | ${w.distance}km`;
+    if(w.level) s += ` | Lv.${w.level}`;
+    if(w.notes) s += ` | ${w.notes}`;
+    return s;
+  }
+  if(w.category==='hiit') {
+    let s = w.duration||'0:00';
+    if(w.notes) s += ` | ${w.notes}`;
+    return s;
+  }
+  if(w.category==='functional') {
+    let s = `${w.sets||1} 組 × ${w.reps||0} 次`;
+    if(w.notes) s += ` | ${w.notes}`;
+    return s;
+  }
+  return '';
+}
+
+// ========== CLIPBOARD FUNCTIONS ==========
+function showWorkoutMenu(e, backendId) {
+  e.preventDefault();
+  e.stopPropagation();
+  const rec = allRecords.find(r => r.__backendId === backendId);
+  if(!rec) return;
+
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <h3 class="font-bold text-lg text-primary mb-4 text-center">${rec.exercise}</h3>
+    <div class="space-y-2">
+      <button onclick="copyWorkout('${backendId}')" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
+        <i data-lucide="copy" class="w-5 h-5"></i> 複製
+      </button>
+      <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+    </div>
+  </div>`);
+  lucide.createIcons();
+}
+
+function copyWorkout(backendId) {
+  const rec = allRecords.find(r => r.__backendId === backendId);
+  if(!rec) return;
+  
+  clipboardWorkout = rec;
+  clipboardMode = true;
+  closeModal();
+  showToast('已複製！按日曆日子粘貼', 'success');
+  renderCalendar();
+}
+
+function cancelClipboard() {
+  clipboardMode = false;
+  clipboardWorkout = null;
+  showToast('已取消複製', 'info');
+  renderCalendar();
+}
+
+async function pasteWorkout(dateStr) {
+  if(!clipboardWorkout) return;
+  
+  const btn = document.querySelector('button:hover') || document.body;
+  if(btn) btn.style.opacity = '0.7';
+
+  if(allRecords.filter(r=>r.record_type==='workout').length >= 999) {
+    showToast('已達記錄上限 (999)！', 'error');
+    if(btn) btn.style.opacity = '1';
+    return;
+  }
+
+  // Create new record without backend ID
+  const newRec = {
+    record_type: 'workout',
+    date: dateStr,
+    category: clipboardWorkout.category,
+    exercise: clipboardWorkout.exercise,
+    weight: clipboardWorkout.weight || 0,
+    reps: clipboardWorkout.reps || 0,
+    sets: clipboardWorkout.sets || 1,
+    duration: clipboardWorkout.duration || '',
+    distance: clipboardWorkout.distance || 0,
+    level: clipboardWorkout.level || 0,
+    notes: clipboardWorkout.notes || '',
+    points: clipboardWorkout.points || 0,
+    reward_id: '',
+    used: false,
+redeemed_at: '',
+    user_name: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : '',
+    font_size: 0
+  };
+
+await db.collection("users").doc(currentUser.uid).collection("records").add(newRec);
+const result = { isOk: true }; 
+  if(btn) btn.style.opacity = '1';
+  
+  if(result.isOk) {
+    showToast(`已粘貼到 ${dateStr}！`, 'success');
+    clipboardMode = false;
+    clipboardWorkout = null;
+    selectedDate = dateStr;
+    renderCalendar();
+  } else {
+    showToast('粘貼失敗，請重試', 'error');
+  }
+}
+
+// ========== ADD WORKOUT ==========
+function openAddWorkout(date) {
+  let selCat = 'strength', selSubcat = '', selExercise = '';
+  let isExEditMode = false; // 追蹤是否正在編輯清單
+
+  // 切換編輯模式
+  window._toggleExEdit = () => { isExEditMode = !isExEditMode; renderAdd(); };
+  
+  // 刪除項目
+  window._deleteEx = (ex) => {
+    if(!confirm(`確定要刪除「${ex}」？`)) return;
+    exerciseData[selCat].subcats[selSubcat] = exerciseData[selCat].subcats[selSubcat].filter(e => e !== ex);
+    if(selExercise === ex) selExercise = '';
+    saveCustomExercises(); // 同步到 Firebase
+    renderAdd();
+  };
+  
+  // 新增項目
+  window._addNewEx = () => {
+    const name = prompt('請輸入新動作名稱：');
+    if(!name || !name.trim()) return;
+    const trimmed = name.trim();
+    if(exerciseData[selCat].subcats[selSubcat].includes(trimmed)) { showToast('項目已存在', 'error'); return; }
+    exerciseData[selCat].subcats[selSubcat].push(trimmed);
+    selExercise = trimmed;
+    saveCustomExercises(); // 同步到 Firebase
+    renderAdd();
+  };
+
+  function renderAdd() {
+    const catData = exerciseData[selCat];
+    const subcats = Object.keys(catData.subcats);
+    if(!selSubcat || !catData.subcats[selSubcat]) selSubcat = subcats[0];
+    const exercises = catData.subcats[selSubcat];
+    if(!selExercise || !exercises.includes(selExercise)) selExercise = '';
+
+    let html = `<div class="modal-box max-w-md" onclick="event.stopPropagation()" style="max-height:90%; overflow-y:auto;">
+      <h3 class="font-extrabold text-lg text-primary mb-3">📝 新增訓練 - ${date}</h3>
+      
+      <div class="flex gap-2 overflow-x-auto pb-2 mb-3">`;
+// 1. 強制主分類排序
+    const mainCatOrder = ['strength', 'cardio', 'hiit', 'functional'];
+    mainCatOrder.forEach(k => {
+      const v = exerciseData[k];
+      if(!v) return;
+      const catColors = { strength: 'bg-sky1 text-blue-700 hover:bg-sky2', cardio: 'bg-orange-100 text-orange-700 hover:bg-orange-200', hiit: 'bg-pink-100 text-pink-700 hover:bg-pink-200', functional: 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' };
+      const selectedStyle = selCat===k ? { strength: 'bg-blue-300 text-blue-900', cardio: 'bg-orange-300 text-orange-900', hiit: 'bg-pink-300 text-pink-900', functional: 'bg-indigo-300 text-indigo-900' }[k] : '';
+      html += `<button class="seg-btn ${selCat===k?selectedStyle:catColors[k]}" onclick="event.stopPropagation();window._addCat='${k}';window._rerenderAdd()">${v.label}</button>`;
+    });
+
+    html += `</div>
+      <div class="flex gap-2 overflow-x-auto pb-2 mb-3">`;
+      
+    // 2. 強制次分類排序
+    const subcatOrder = ['胸','背','腿','肩','手臂','器械','戶外','HIIT','瑜伽','徒手','拉伸'];
+    subcats.sort((a, b) => {
+      let idxA = subcatOrder.indexOf(a);
+      let idxB = subcatOrder.indexOf(b);
+      if(idxA === -1) idxA = 999; // 新自訂嘅分類排最後
+      if(idxB === -1) idxB = 999;
+      return idxA - idxB;
+    });
+
+    // 3. 補回次分類專屬顏色
+    subcats.forEach(sc => {
+      const subcatColors = { '胸': 'bg-red-100 text-red-700 hover:bg-red-200', '背': 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200', '腿': 'bg-green-100 text-green-700 hover:bg-green-200', '肩': 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200', '手臂': 'bg-purple-100 text-purple-700 hover:bg-purple-200', '器械': 'bg-orange-100 text-orange-700 hover:bg-orange-200', '戶外': 'bg-orange-100 text-orange-700 hover:bg-orange-200', 'HIIT': 'bg-pink-100 text-pink-700 hover:bg-pink-200', '瑜伽': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '徒手': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '拉伸': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' };
+      const selectedStyles = { '胸': 'bg-red-300 text-red-900', '背': 'bg-cyan-300 text-cyan-900', '腿': 'bg-green-300 text-green-900', '肩': 'bg-yellow-300 text-yellow-900', '手臂': 'bg-purple-300 text-purple-900', '器械': 'bg-orange-300 text-orange-900', '戶外': 'bg-orange-300 text-orange-900', 'HIIT': 'bg-pink-300 text-pink-900', '瑜伽': 'bg-indigo-300 text-indigo-900', '徒手': 'bg-indigo-300 text-indigo-900', '拉伸': 'bg-indigo-300 text-indigo-900' };
+      
+      const sStyle = selectedStyles[sc] || 'bg-slate-400 text-white'; // 搵唔到顏色就用灰色
+      const cColor = subcatColors[sc] || 'bg-slate-100 text-slate-700 hover:bg-slate-200';
+      
+      html += `<button class="seg-btn text-xs ${selSubcat===sc?sStyle:cColor}" onclick="event.stopPropagation();window._addSubcat='${sc}';window._rerenderAdd()">${sc}</button>`;
+    });
+    
+    html += `</div>
+      
+      <div class="flex justify-between items-center mb-2 px-1">
+        <span class="text-xs font-bold text-slate-400">選擇動作</span>
+        <button class="text-[10px] font-bold px-2 py-1 rounded transition-colors ${isExEditMode?'bg-primary text-white':'bg-slate-200 text-slate-600'}" onclick="event.stopPropagation();window._toggleExEdit()">
+          ${isExEditMode ? '完成' : '✏️ 自訂'}
+        </button>
+</div>`;
+
+    html += `<div class="grid grid-cols-2 gap-2 mb-3 max-h-32 overflow-y-auto p-1">`;
+    
+    exercises.forEach(ex => {
+      if(isExEditMode) {
+        html += `<div class="relative flex">
+          <button class="flex-1 text-left px-3 py-2 rounded-xl text-sm font-semibold bg-sky1 text-slate-400 cursor-default">${ex}</button>
+          <button class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-md" onclick="event.stopPropagation();window._deleteEx('${ex.replace(/'/g,"\\'")}')">✕</button>
+        </div>`;
+      } else {
+        html += `<button class="text-left px-3 py-2 rounded-xl text-sm font-semibold transition-all ${selExercise===ex?'bg-blue-400 text-blue-900 font-extrabold':'bg-sky1 text-slate-700 hover:bg-sky2'}" onclick="event.stopPropagation();window._addEx='${ex.replace(/'/g,"\\'")}';window._rerenderAdd()">${ex}</button>`;
+      }
+    });
+
+    if(isExEditMode) {
+      html += `<button class="border-2 border-dashed border-sky3 text-primary rounded-xl text-sm font-bold flex items-center justify-center py-1.5" onclick="event.stopPropagation();window._addNewEx()">➕ 新增項目</button>`;
+    }
+    html += '</div>';
+
+    // Input fields based on category
+    if(selExercise) {
+      html += '<div class="space-y-3 mt-3 text-left">';
+      if(selCat === 'strength') {
+        html += inputField('weight', '重量 (kg)', 'number', '', 'e.g. 40');
+        html += inputField('reps', '次數 (Reps)', 'number', '', 'e.g. 12');
+        html += inputField('sets', '組數 (Sets)', 'number', '', 'e.g. 3');
+      } else if(selCat === 'cardio') {
+        html += inputField('duration', '時間 (分:秒)', 'text', '', 'e.g. 30:00');
+        const isOutdoor = exerciseData.cardio.subcats['戶外']?.includes(selExercise);
+        if(!isOutdoor) {
+          html += inputField('distance', '距離 (km)', 'number', '', 'e.g. 5');
+          html += inputField('level', '阻力等級', 'number', '', 'e.g. 8');
+        }
+        html += inputField('notes', '備註', 'text', '', '');
+        html += inputField('link', '連結 (如 YouTube)', 'text', '', 'https://...');
+      } else if(selCat === 'hiit') {
+        html += inputField('duration', '時間 (分:秒)', 'text', '', 'e.g. 20:00');
+        html += inputField('notes', '備註', 'text', '', '');
+        html += inputField('link', '連結 (如 YouTube)', 'text', '', 'https://...');
+      } else if(selCat === 'functional') {
+        html += inputField('sets', '組數 (Sets)', 'number', '', 'e.g. 3');
+        html += inputField('reps', '次數 (Reps)', 'number', '', 'e.g. 15');
+        html += inputField('notes', '備註', 'text', '', '');
+        html += inputField('link', '連結 (如 YouTube)', 'text', '', 'https://...');
+      }
+      html += `</div>
+        <button onclick="submitWorkout('${date}','${selCat}','${selExercise.replace(/'/g,"\\'")}')" id="submitWorkoutBtn" class="w-full mt-4 bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition">
+          儲存 ✅
+        </button>`;
+    }
+
+    html += `<button onclick="closeModal()" class="w-full mt-2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button></div>`;
+    showModal(html);
+    lucide.createIcons();
+  }
+
+  window._rerenderAdd = () => {
+    if(window._addCat) { selCat = window._addCat; selSubcat=''; selExercise=''; window._addCat=null; }
+    if(window._addSubcat) { selSubcat = window._addSubcat; selExercise=''; window._addSubcat=null; }
+    if(window._addEx) { selExercise = window._addEx; window._addEx=null; }
+    renderAdd();
+  };
+  renderAdd();
+}
+
+function inputField(id, label, type, val, ph) {
+  return `<div><label class="text-xs font-bold text-slate-500 block mb-1">${label}</label>
+    <input id="add_${id}" type="${type}" value="${val}" placeholder="${ph}" step="${type==='number'?'any':''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold"></div>`;
+}
+
+async function submitWorkout(date, cat, exercise) {
+  const btn = document.getElementById('submitWorkoutBtn');
+  if(btn) { btn.disabled = true; btn.textContent = '儲存中...'; }
+
+  if(allRecords.filter(r=>r.record_type==='workout').length >= 9999) {
+    showToast('已達記錄上限 (9999)！請刪除一些舊記錄', 'error');
+    if(btn) { btn.disabled = false; btn.textContent = '儲存 ✅'; }
+    return;
+  }
+
+  const gv = id => { const e = document.getElementById('add_'+id); return e ? e.value : ''; };
+  const rec = {
+    record_type: 'workout', date, category: cat, exercise,
+    weight: parseFloat(gv('weight'))||0, reps: parseInt(gv('reps'))||0, sets: parseInt(gv('sets'))||1,
+    duration: gv('duration')||'', distance: parseFloat(gv('distance'))||0, level: parseInt(gv('level'))||0,
+    notes: gv('notes')||'', link: gv('link')||'', // 👈 新增 link
+    points: 0, reward_id:'', used: false, redeemed_at:'', user_name: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : '',
+    font_size: 0
+  };
+  rec.points = calcPoints(rec);
+
+  await db.collection("users").doc(currentUser.uid).collection("records").add(rec);
+  const result = { isOk: true };
+  if(result.isOk) {
+    closeModal();
+    showToast(`+${rec.points}⭐ 已記錄！`, 'success');
+  } else {
+    showToast('儲存失敗，請重試', 'error');
+    if(btn) { btn.disabled = false; btn.textContent = '儲存 ✅'; }
+  }
+}
+
+// ========== SHOP PAGE ==========
+function renderShop() {
+  const el = document.getElementById('page-shop');
+  const { available } = getTotalPoints();
+  const redemptions = allRecords.filter(r => r.record_type === 'redemption');
+
+  let html = `<div class="flex items-center justify-between mb-3 card-enter">
+    <div class="text-center flex-1">
+      <div class="text-4xl mb-1 float-anim">🎁</div>
+      <h2 class="font-extrabold text-xl text-primary">獎勵商店</h2>
+      <p class="text-slate-500 text-sm">你有 <span class="font-bold text-warm3">${available}⭐</span> 可以使用</p>
+    </div>
+    ${redemptions.filter(r => r.used).length > 0 ? `<button onclick="showRedemptionHistory()" class="text-xs font-bold bg-sky2 text-primary px-3 py-2 rounded-lg hover:bg-sky3 transition h-fit">換領歷史</button>` : ''}
+  </div>`;
+
+  // Active vouchers
+  const activeVouchers = redemptions.filter(r => !r.used);
+  const usedVouchers = redemptions.filter(r => r.used);
+
+  if(activeVouchers.length > 0) {
+    html += `<div class="mb-4"><h3 class="font-bold text-sm text-primary mb-2">🎫 未使用嘅兌換券</h3>`;
+   activeVouchers.forEach(v => {
+      // 優先使用兌換時記錄嘅名同圖示，就算 Admin 刪除咗商店項目，張券都唔會消失
+      const rwName = v.name || (rewards.find(r=>r.id===v.reward_id)?.name || '已下架獎勵');
+      const rwEmoji = v.emoji || (rewards.find(r=>r.id===v.reward_id)?.emoji || '🎁');
+      
+      const redeemedDate = new Date(v.redeemed_at);
+      const dateStr = redeemedDate.toLocaleDateString('zh-HK');
+      const timeStr = redeemedDate.toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'});
+      html += `<div class="voucher-bg rounded-2xl p-3 mb-2 flex items-center justify-between card-enter">
+        <div class="flex items-center gap-2 flex-1">
+          <span class="text-2xl flex-shrink-0">${rwEmoji}</span>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-sm">${rwName}</div>
+            <div class="text-xs text-slate-500">${dateStr} ${timeStr}</div>
+          </div>
+        </div>
+        <button onclick="useVoucher('${v.__backendId}','${rwName}','${rwEmoji}')" class="bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-primaryDk transition flex-shrink-0 ml-2">使用</button>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  // Reward cards
+  html += '<h3 class="font-bold text-sm text-primary mb-2 mt-4">🏆 可兌換獎勵</h3>';
+  rewards.forEach(rw => {
+    const pct = Math.min(100, Math.round(available / rw.cost * 100));
+    const canRedeem = available >= rw.cost;
+    html += `<div class="${canRedeem?'reward-card':'reward-card-locked'} p-4 mb-3 card-enter">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-3xl">${rw.emoji}</span>
+          <div><div class="font-bold">${rw.name}</div><div class="text-xs ${canRedeem?'text-amber-700':'text-slate-500'}">${rw.desc}</div></div>
+        </div>
+        <span class="font-extrabold text-sm ${canRedeem?'text-amber-700':'text-slate-500'}">${rw.cost}⭐</span>
+      </div>
+      <div class="bg-white/50 rounded-full h-3 overflow-hidden mb-2">
+        <div class="progress-bar h-full rounded-full ${canRedeem?'bg-amber-400':'bg-slate-300'}" style="width:${pct}%"></div>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold ${canRedeem?'text-amber-700':'text-slate-500'}">${pct}%</span>
+        ${canRedeem?`<button onclick="redeemReward('${rw.id}')" class="bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold px-4 py-1.5 rounded-xl transition">兌換</button>`:`<span class="text-xs text-slate-400">仲差 ${rw.cost - available}⭐</span>`}
+      </div>
+    </div>`;
+  });
+
+  el.innerHTML = html;
+  lucide.createIcons();
+}
+
+async function redeemReward(rewardId) {
+  const rw = rewards.find(r=>r.id===rewardId);
+  if(!rw) return;
+  const { available } = getTotalPoints();
+  if(available < rw.cost) { showToast('積分不足！', 'error'); return; }
+
+  if(allRecords.filter(r=>r.record_type==='redemption').length >= 999) {
+    showToast('兌換記錄已滿！', 'error'); return;
+  }
+
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <div class="text-5xl mb-3">${rw.emoji}</div>
+    <h3 class="font-extrabold text-lg text-primary mb-1">確認兌換？</h3>
+    <p class="text-slate-500 text-sm mb-4">使用 ${rw.cost}⭐ 兌換「${rw.name}」</p>
+    <button id="confirmRedeemBtn" onclick="confirmRedeem('${rewardId}')" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl transition mb-2">確認兌換 🎉</button>
+    <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`);
+}
+
+async function confirmRedeem(rewardId) {
+  const btn = document.getElementById('confirmRedeemBtn');
+  if(btn) { btn.disabled = true; btn.textContent = '處理中...'; }
+
+ const rw = rewards.find(r=>r.id===rewardId);
+  const rec = {
+    record_type: 'redemption', date: toDateStr(new Date()), category:'', exercise:'',
+    weight:0, reps:0, sets:0, duration:'', distance:0, level:0, notes:'',
+    points:0, reward_id: rewardId, name: rw.name, cost: rw.cost, emoji: rw.emoji, used: false, // 👈 直接記錄成本同名
+    redeemed_at: new Date().toISOString(), user_name: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : '', font_size:0
+  };
+
+  await db.collection("users").doc(currentUser.uid).collection("records").add(rec);
+const result = { isOk: true };
+  closeModal();
+  if(result.isOk) {
+    showToast('兌換成功！🎉', 'success');
+  } else {
+    showToast('兌換失敗，請重試', 'error');
+  }
+}
+
+function useVoucher(backendId, name, emoji) {
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <div class="text-5xl mb-3">${emoji}</div>
+    <h3 class="font-extrabold text-lg text-primary mb-1">使用「${name}」？</h3>
+    <p class="text-slate-500 text-sm mb-4">使用後將無法復原</p>
+    <button id="confirmUseBtn" onclick="confirmUseVoucher('${backendId}','${name}','${emoji}')" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition mb-2">確認使用 ✅</button>
+    <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`);
+}
+
+async function confirmUseVoucher(backendId, name, emoji) {
+  const btn = document.getElementById('confirmUseBtn');
+  if(btn) { btn.disabled = true; btn.textContent = '處理中...'; }
+
+  const rec = allRecords.find(r => r.__backendId === backendId);
+  if(!rec) { closeModal(); showToast('找不到記錄', 'error'); return; }
+
+await db.collection("users").doc(currentUser.uid).collection("records").doc(backendId).update({ used: true });
+const result = { isOk: true };
+  closeModal();
+  if(result.isOk) {
+    const usedDate = new Date();
+    const dateStr = usedDate.toLocaleDateString('zh-HK');
+    const timeStr = usedDate.toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'});
+    showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+      <div class="text-6xl mb-3">${emoji}</div>
+      <h3 class="font-extrabold text-xl text-green-500 mb-2">🎊 已使用！</h3>
+      <p class="font-bold text-lg mb-1">${name} 使用券</p>
+      <p class="text-xs text-slate-400 mb-4">${dateStr} ${timeStr}</p>
+      <p class="text-slate-400 text-sm mb-4">好好享受獎勵！你值得嘅 💪</p>
+      <button onclick="closeModal()" class="w-full bg-primary text-white font-bold py-3 rounded-xl hover:bg-primaryDk transition">完成</button>
+    </div>`);
+  } else {
+    showToast('操作失敗，請重試', 'error');
+  }
+}
+
+// ========== REDEMPTION HISTORY ==========
+function showRedemptionHistory() {
+  const usedVouchers = allRecords.filter(r => r.record_type === 'redemption' && r.used).sort((a,b) => b.redeemed_at.localeCompare(a.redeemed_at));
+  
+  let html = `<div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85%;overflow-y:auto;">
+    <h3 class="font-extrabold text-lg text-primary mb-4">🎫 換領歷史</h3>`;
+  
+  if(usedVouchers.length === 0) {
+    html += '<p class="text-center text-slate-400 text-sm py-6">暫時冇換領記錄</p>';
+  } else {
+usedVouchers.forEach(v => {
+      // 同理，保護歷史記錄
+      const rwName = v.name || (rewards.find(r=>r.id===v.reward_id)?.name || '已下架獎勵');
+      const rwEmoji = v.emoji || (rewards.find(r=>r.id===v.reward_id)?.emoji || '🎁');
+      
+      const usedDate = new Date(v.redeemed_at);
+      const dateStr = usedDate.toLocaleDateString('zh-HK');
+      const timeStr = usedDate.toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'});
+      html += `<div class="bg-slate-50 rounded-xl p-3 mb-2 flex items-center gap-2 border border-slate-200">
+        <span class="text-2xl flex-shrink-0">${rwEmoji}</span>
+        <div class="flex-1 min-w-0">
+          <div class="font-bold text-sm">${rwName}</div>
+          <div class="text-xs text-slate-500">${dateStr} ${timeStr}</div>
+        </div>
+      </div>`;
+    });
+  }
+  
+  html += `<button onclick="closeModal()" class="w-full mt-4 bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primaryDk transition">關閉</button>
+    </div>`;
+  showModal(html);
+  lucide.createIcons();
+}
+function renderHistory() {
+  const el = document.getElementById('page-history');
+  const workouts = allRecords.filter(r => r.record_type === 'workout').sort((a,b) => b.date.localeCompare(a.date));
+
+  let html = `<div class="flex items-center justify-between mb-3">
+    <h2 class="font-extrabold text-xl text-primary">📋 訓練記錄</h2>
+    ${workouts.length > 0 ? `<button onclick="toggleHistoryEditMode()" class="text-sm font-bold px-3 py-1.5 rounded-lg transition-all ${historyEditMode?'bg-red-500 text-white':'bg-sky2 text-primary'}">${historyEditMode?'完成':'編輯'}</button>` : ''}
+  </div>`;
+
+  if(historyEditMode && selectedRecords.size > 0) {
+    html += `<div class="bg-blue-50 rounded-xl p-3 mb-3 flex items-center justify-between">
+      <span class="text-sm font-bold text-primary">已選擇 ${selectedRecords.size} 筆</span>
+      <div class="flex gap-2">
+        <button onclick="batchChangeDate()" class="text-xs font-bold bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-primaryDk transition">修改日期</button>
+        <button onclick="batchDeleteRecords()" class="text-xs font-bold bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600 transition">刪除</button>
+      </div>
+    </div>`;
+  }
+
+  if(workouts.length === 0) {
+    html += '<div class="text-center py-12 text-slate-400"><div class="text-4xl mb-2">📝</div><p class="font-semibold">暫時冇記錄</p></div>';
+  } else {
+    // Group by date
+    const grouped = {};
+    workouts.forEach(w => {
+      if(!grouped[w.date]) grouped[w.date] = [];
+      grouped[w.date].push(w);
+    });
+    Object.entries(grouped).forEach(([date, items]) => {
+      html += `<div class="mb-4 bg-white rounded-2xl shadow-sm p-4 card-enter"><div class="text-xs font-bold text-slate-400 mb-3">${date}</div>`;
+      
+      // Group by category within each date
+      const byCategory = {};
+      items.forEach(w => {
+        if(!byCategory[w.category]) byCategory[w.category] = [];
+        byCategory[w.category].push(w);
+      });
+
+      // Sort categories
+      const catOrder = ['strength', 'cardio', 'hiit', 'functional'];
+      catOrder.forEach(cat => {
+        if(!byCategory[cat]) return;
+        const catItems = byCategory[cat];
+        const catLabel = { strength: '💪 力量', cardio: '🏃 有氧', hiit: '🔥 HIIT', functional: '🧘 功能性' }[cat];
+        html += `<div class="mb-3"><div class="text-xs font-bold text-slate-400 mb-1.5">${catLabel}</div>`;
+
+        catItems.forEach(w => {
+          let subcatDisplay = '';
+          let cardBgClass = 'bg-sky1 hover:bg-sky2';
+          let textColorClass = 'text-slate-900';
+          
+          if(w.category === 'strength') {
+            for(const [sc, exList] of Object.entries(exerciseData.strength.subcats)) {
+              if(exList.includes(w.exercise)) {
+                const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '手臂': 'bg-purple-100 text-purple-700' };
+                subcatDisplay = `<span class="text-xs font-semibold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded-full flex-shrink-0">${sc}</span>`;
+                break;
+              }
+            }
+          } else if(w.category === 'cardio') {
+            cardBgClass = 'bg-orange-100 hover:bg-orange-200';
+            textColorClass = 'text-orange-900';
+          } else if(w.category === 'hiit') {
+            cardBgClass = 'bg-pink-100 hover:bg-pink-200';
+            textColorClass = 'text-pink-900';
+          } else if(w.category === 'functional') {
+            cardBgClass = 'bg-indigo-100 hover:bg-indigo-200';
+            textColorClass = 'text-indigo-900';
+          }
+          
+  const isSelected = selectedRecords.has(w.__backendId);
+          
+          let linkBtnHtml = '';
+          if (['cardio', 'hiit', 'functional'].includes(w.category) && w.link) {
+            let safeLink = w.link.trim();
+            if(safeLink && !safeLink.startsWith('http')) safeLink = 'https://' + safeLink;
+            linkBtnHtml = `<a href="${safeLink}" target="_blank" onclick="event.stopPropagation()" class="inline-flex items-center gap-1 text-[11px] font-bold bg-white/60 text-slate-700 px-2 py-0.5 rounded-lg hover:bg-white hover:text-primary transition shadow-sm border border-slate-200">
+              <i data-lucide="external-link" class="w-3 h-3"></i> 影片
+            </a>`;
+          }
+
+          html += `<div class="w-full text-left ${cardBgClass} rounded-xl p-3 mb-2 flex items-start justify-between transition-all ${textColorClass} ${isSelected?'ring-4 ring-blue-500':''}${historyEditMode?'':' hover:shadow-md'}" onclick="${historyEditMode?`event.stopPropagation();toggleRecordSelect('${w.__backendId}')`:''}" style="cursor:${historyEditMode?'pointer':'default'}">
+            <button onclick="${historyEditMode?'event.stopPropagation();return false':''}editRecord('${w.__backendId}')" class="flex-1 flex items-start gap-2 border-none bg-none cursor-pointer text-left ${historyEditMode?'pointer-events-none':''}">
+              ${subcatDisplay ? `<div class="flex-shrink-0 mt-0.5">${subcatDisplay}</div>` : ''}
+              <div class="flex-1">
+                <div class="font-bold text-sm">${w.exercise}</div>
+                <div class="text-xs opacity-75 mt-1">${formatWorkoutDetail(w)}</div>
+              </div>
+            </button>
+            <div class="flex items-center gap-1.5 flex-shrink-0 ml-2">
+              ${linkBtnHtml}
+              <span class="text-xs font-bold text-warm3 bg-warm1 px-2 py-0.5 rounded-full whitespace-nowrap">+${w.points}⭐</span>
+            </div>
+          </div>`;
+        });
+        html += '</div>';
+      });
+      
+      html += '</div>';
+    });
+  }
+  el.innerHTML = html;
+  lucide.createIcons();
+}
+
+function toggleHistoryEditMode() {
+  historyEditMode = !historyEditMode;
+  selectedRecords.clear();
+  renderHistory();
+}
+
+function toggleRecordSelect(backendId) {
+  if(selectedRecords.has(backendId)) {
+    selectedRecords.delete(backendId);
+  } else {
+    selectedRecords.add(backendId);
+  }
+  renderHistory();
+}
+
+function batchChangeDate() {
+  if(selectedRecords.size === 0) return;
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <h3 class="font-extrabold text-lg text-primary mb-3">📅 修改日期</h3>
+    <input id="batchDateInput" type="date" class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition font-semibold mb-4">
+    <button id="confirmBatchDateBtn" onclick="confirmBatchChangeDate()" class="w-full bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition mb-2">確認修改</button>
+    <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`);
+  // Set default to today
+  document.getElementById('batchDateInput').valueAsDate = new Date();
+}
+
+async function confirmBatchChangeDate() {
+  const dateStr = document.getElementById('batchDateInput').value;
+  if(!dateStr) { showToast('請選擇日期', 'error'); return; }
+  
+  const btn = document.getElementById('confirmBatchDateBtn');
+  if(btn) { btn.disabled = true; btn.textContent = '修改中...'; }
+
+  for(const id of selectedRecords) {
+    const rec = allRecords.find(r => r.__backendId === id);
+    if(rec) {
+      await db.collection("users").doc(currentUser.uid).collection("records").doc(id).update({ date: dateStr });
+    }
+  }
+  
+  closeModal();
+  historyEditMode = false;
+  selectedRecords.clear();
+  showToast(`已修改 ${selectedRecords.size} 筆記錄`, 'success');
+  renderHistory();
+}
+
+function batchDeleteRecords() {
+  if(selectedRecords.size === 0) return;
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <div class="text-4xl mb-2">🗑️</div>
+    <h3 class="font-bold text-lg mb-1">刪除選中記錄？</h3>
+    <p class="text-slate-500 text-sm mb-4">共 ${selectedRecords.size} 筆記錄將被刪除</p>
+    <button id="confirmBatchDelBtn" onclick="confirmBatchDelete()" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition mb-2">確認刪除</button>
+    <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`);
+}
+
+async function confirmBatchDelete() {
+  const btn = document.getElementById('confirmBatchDelBtn');
+  if(btn) { btn.disabled = true; btn.textContent = '刪除中...'; }
+
+  for(const id of selectedRecords) {
+    const rec = allRecords.find(r => r.__backendId === id);
+    if(rec) {
+await db.collection("users").doc(currentUser.uid).collection("records").doc(id).delete();
+    }
+  }
+  
+  closeModal();
+  historyEditMode = false;
+  selectedRecords.clear();
+  showToast('已刪除選中記錄', 'info');
+  renderHistory();
+}
+
+function deleteRecord(backendId) {
+  const rec = allRecords.find(r => r.__backendId === backendId);
+  if(!rec) return;
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <div class="text-4xl mb-2">🗑️</div>
+    <h3 class="font-bold text-lg mb-1">確認刪除？</h3>
+    <p class="text-slate-500 text-sm mb-4">${rec.exercise} - ${rec.date}</p>
+    <button id="confirmDelBtn" onclick="confirmDelete('${backendId}')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition mb-2">確認刪除</button>
+    <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`);
+}
+
+async function confirmDelete(backendId) {
+  const btn = document.getElementById('confirmDelBtn');
+  if(btn) { btn.disabled = true; btn.textContent = '刪除中...'; }
+  const rec = allRecords.find(r => r.__backendId === backendId);
+  if(!rec) { closeModal(); return; }
+await db.collection("users").doc(currentUser.uid).collection("records").doc(backendId).delete();
+const result = { isOk: true };
+  closeModal();
+  if(result.isOk) showToast('已刪除', 'info');
+  else showToast('刪除失敗', 'error');
+}
+
+function editRecord(backendId) {
+  const rec = allRecords.find(r => r.__backendId === backendId);
+  if(!rec) return;
+
+  let html = `<div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85%;overflow-y:auto;">
+    <h3 class="font-extrabold text-lg text-primary mb-3">✏️ 修改記錄</h3>
+    <p class="text-sm font-bold text-slate-500 mb-3">${rec.exercise} - ${rec.date}</p>
+    <div class="space-y-3">`;
+
+  if(rec.category === 'strength') {
+    html += inputField('edit_weight', '重量 (kg)', 'number', rec.weight, '');
+    html += inputField('edit_reps', '次數', 'number', rec.reps, '');
+    html += inputField('edit_sets', '組數', 'number', rec.sets, '');
+  } else if(rec.category === 'cardio') {
+    html += inputField('edit_duration', '時間', 'text', rec.duration, '');
+    html += inputField('edit_distance', '距離 (km)', 'number', rec.distance, '');
+    html += inputField('edit_level', '阻力等級', 'number', rec.level, '');
+    html += inputField('edit_notes', '備註', 'text', rec.notes, '');
+    html += inputField('edit_link', '連結', 'text', rec.link||'', '');
+  } else if(rec.category === 'hiit') {
+    html += inputField('edit_duration', '時間', 'text', rec.duration, '');
+    html += inputField('edit_notes', '備註', 'text', rec.notes||'', '');
+    html += inputField('edit_link', '連結', 'text', rec.link||'', '');
+  } else {
+    html += inputField('edit_sets', '組數', 'number', rec.sets, '');
+    html += inputField('edit_reps', '次數', 'number', rec.reps, '');
+    html += inputField('edit_notes', '備註', 'text', rec.notes||'', '');
+    html += inputField('edit_link', '連結', 'text', rec.link||'', '');
+  }
+
+  html += `</div>
+    <button id="saveEditBtn" onclick="saveEdit('${backendId}')" class="w-full mt-4 bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition">儲存修改 ✅</button>
+    <button onclick="deleteRecord('${backendId}')" class="w-full mt-2 bg-red-50 hover:bg-red-100 text-red-500 font-bold py-2.5 rounded-xl transition">刪除 🗑️</button>
+    <button onclick="closeModal()" class="w-full mt-2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`;
+  showModal(html);
+
+  // Set values after render
+  setTimeout(() => {
+    const setV = (id,v) => { const e=document.getElementById(id); if(e) e.value=v; };
+    setV('add_edit_weight', rec.weight); setV('add_edit_reps', rec.reps); setV('add_edit_sets', rec.sets);
+    setV('add_edit_duration', rec.duration); setV('add_edit_distance', rec.distance);
+    setV('add_edit_level', rec.level); setV('add_edit_notes', rec.notes); setV('add_edit_link', rec.link);
+  }, 50);
+}
+
+async function saveEdit(backendId) {
+  const btn = document.getElementById('saveEditBtn');
+  if(btn) { btn.disabled = true; btn.textContent = '儲存中...'; }
+
+  const rec = allRecords.find(r => r.__backendId === backendId);
+  if(!rec) { closeModal(); return; }
+
+  const gv = id => { const e = document.getElementById('add_edit_'+id); return e ? e.value : ''; };
+  const updated = {...rec,
+    weight: parseFloat(gv('weight'))||0, reps: parseInt(gv('reps'))||0, sets: parseInt(gv('sets'))||1,
+    duration: gv('duration')||rec.duration, distance: parseFloat(gv('distance'))||0,
+    level: parseInt(gv('level'))||0, notes: gv('notes')||'', link: gv('link')||'' // 👈 新增 link
+  };
+  updated.points = calcPoints(updated);
+
+  await db.collection("users").doc(currentUser.uid).collection("records").doc(backendId).update(updated);
+  const result = { isOk: true };
+  closeModal();
+  if(result.isOk) showToast('已更新！', 'success');
+  else showToast('更新失敗', 'error');
+}
+
+// ========== SETTINGS PAGE ==========
+function renderSettings() {
+  const el = document.getElementById('page-settings');
+const userName = currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : '健身達人';
+  const currentFontSize = parseInt(localStorage.getItem('gq_fontsize'))||16;
+
+  // Get available months
+  const months = [...new Set(allRecords.filter(r=>r.record_type==='workout').map(r=>r.date.substring(0,7)))].sort().reverse();
+
+  let html = `<h2 class="font-extrabold text-xl text-primary mb-4">⚙️ 設定</h2>
+    <div class="bg-white rounded-2xl shadow-sm p-4 mb-3 card-enter">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-12 h-12 rounded-full bg-sky2 flex items-center justify-center text-2xl">😊</div>
+        <div><div class="font-bold">${userName}</div><div class="text-xs text-slate-400">健身達人</div></div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm p-4 mb-3 card-enter">
+      <h3 class="font-bold text-sm text-primary mb-3">🔤 字體大小</h3>
+      <div class="flex gap-2">`;
+  [14,16,18,20].forEach(s => {
+    html += `<button onclick="setFontSize(${s})" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${currentFontSize===s?'bg-primary text-white':'bg-sky1 text-slate-600 hover:bg-sky2'}">${s}px</button>`;
+  });
+  html += `</div></div>
+
+    <div class="bg-white rounded-2xl shadow-sm p-4 mb-3 card-enter">
+      <h3 class="font-bold text-sm text-primary mb-3">🗑️ 刪除記錄</h3>`;
+
+  if(months.length > 0) {
+    html += '<div class="space-y-2 mb-3">';
+    months.forEach(m => {
+      const count = allRecords.filter(r=>r.record_type==='workout'&&r.date.startsWith(m)).length;
+      html += `<div class="flex items-center justify-between bg-sky1 rounded-xl px-3 py-2">
+        <span class="text-sm font-semibold">${m} (${count}筆)</span>
+        <button onclick="deleteMonth('${m}')" class="text-xs font-bold text-red-400 bg-red-50 px-3 py-1 rounded-lg hover:bg-red-100 transition">刪除</button>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  html += `<button onclick="deleteAllRecords()" class="w-full bg-red-50 text-red-500 font-bold py-2.5 rounded-xl hover:bg-red-100 transition text-sm">刪除全部記錄</button>
+    </div>
+
+<div class="bg-white rounded-2xl shadow-sm p-4 mb-3 card-enter">
+      <h3 class="font-bold text-sm text-primary mb-3">🔄 重設</h3>
+      <div class="flex gap-2">
+        <button onclick="resetPreferences()" class="flex-1 bg-orange-500 text-white font-bold py-2.5 rounded-xl hover:bg-orange-600 transition text-sm">重設自訂項目</button>
+        <button onclick="resetAll()" class="flex-1 bg-red-500 text-white font-bold py-2.5 rounded-xl hover:bg-red-600 transition text-sm">重設所有數據</button>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm p-4 mb-3 card-enter">
+      <h3 class="font-bold text-sm text-primary mb-3">🚪 帳戶管理</h3>
+      <button onclick="doLogout()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition text-sm">登出</button>
+    </div>`;
+  el.innerHTML = html;
+  lucide.createIcons();
+}
+
+function setFontSize(size) {
+  localStorage.setItem('gq_fontsize', size);
+  document.body.style.fontSize = size + 'px';
+  renderSettings();
+  showToast(`字體已設為 ${size}px`, 'info');
+}
+
+function deleteMonth(month) {
+  const count = allRecords.filter(r=>r.date.startsWith(month)).length;
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <div class="text-4xl mb-2">🗑️</div>
+    <h3 class="font-bold text-lg mb-1">刪除 ${month} 嘅記錄？</h3>
+    <p class="text-slate-500 text-sm mb-4">共 ${count} 筆記錄將被刪除</p>
+    <button id="confirmMonthDelBtn" onclick="confirmDeleteMonth('${month}')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition mb-2">確認刪除</button>
+    <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`);
+}
+
+async function confirmDeleteMonth(month) {
+  const btn = document.getElementById('confirmMonthDelBtn');
+  if(btn) { btn.disabled = true; btn.textContent = '刪除中...'; }
+  const toDelete = allRecords.filter(r => r.date.startsWith(month));
+  for(const r of toDelete) {
+await db.collection("users").doc(currentUser.uid).collection("records").doc(r.__backendId).delete();  }
+  closeModal();
+  showToast(`已刪除 ${month} 嘅記錄`, 'info');
+}
+
+function deleteAllRecords() {
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <div class="text-4xl mb-2">⚠️</div>
+    <h3 class="font-bold text-lg mb-1">刪除全部記錄？</h3>
+    <p class="text-slate-500 text-sm mb-4">所有訓練記錄將被永久刪除</p>
+    <button id="confirmAllDelBtn" onclick="confirmDeleteAll(false)" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition mb-2">確認刪除全部</button>
+    <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`);
+}
+
+function resetPreferences() {
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <div class="text-4xl mb-2">⚙️</div>
+    <h3 class="font-bold text-lg text-orange-500 mb-1">重設自訂項目？</h3>
+    <p class="text-slate-500 text-sm mb-4">將會清除你所有新增或刪除過嘅動作，回復到系統預設狀態！</p>
+    <button id="confirmResetPrefsBtn" onclick="confirmResetPreferences()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition mb-2">確認重設</button>
+    <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`);
+}
+
+async function confirmResetPreferences() {
+  const btn = document.getElementById('confirmResetPrefsBtn');
+  if(btn) { btn.disabled = true; btn.textContent = '處理中...'; }
+
+  if(currentUser) {
+    try {
+      // 刪除 Firebase 入面嘅 preferences 文件
+      await db.collection("users").doc(currentUser.uid).collection("settings").doc("preferences").delete();
+      // 將本地變量變回預設
+      exerciseData = JSON.parse(JSON.stringify(defaultExerciseData));
+      showToast('已回復預設動作清單', 'success');
+    } catch(e) {
+      console.error(e);
+      showToast('重設失敗，請檢查網絡', 'error');
+    }
+  }
+  closeModal();
+}
+
+function resetAll() {
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <div class="text-4xl mb-2">🔄</div>
+    <h3 class="font-bold text-lg text-red-500 mb-1">重設所有數據？</h3>
+    <p class="text-slate-500 text-sm mb-4">包括所有記錄、兌換券同積分，將無法復原！</p>
+    <button id="confirmResetBtn" onclick="confirmDeleteAll(true)" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition mb-2">確認重設</button>
+    <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`);
+}
+
+async function confirmDeleteAll(isReset) {
+  const btnId = isReset ? 'confirmResetBtn' : 'confirmAllDelBtn';
+  const btn = document.getElementById(btnId);
+  if(btn) { btn.disabled = true; btn.textContent = '處理中...'; }
+
+  const toDelete = isReset ? [...allRecords] : allRecords.filter(r=>r.record_type==='workout');
+  for(const r of toDelete) {
+await db.collection("users").doc(currentUser.uid).collection("records").doc(r.__backendId).delete();  }
+if(isReset) {
+    // 順便徹底清除 Firebase 嘅自訂項目
+    if(currentUser) {
+      await db.collection("users").doc(currentUser.uid).collection("settings").doc("preferences").delete();
+    }
+    exerciseData = JSON.parse(JSON.stringify(defaultExerciseData));
+    localStorage.removeItem('gq_user');
+    localStorage.removeItem('gq_fontsize');
+  }
+  closeModal();
+  if(isReset) {
+    showToast('已重設所有數據', 'info');
+    setTimeout(() => location.reload(), 1000);
+  } else {
+    showToast('已刪除全部記錄', 'info');
+  }
+}
+
+// ==========================================
+// ========== ADMIN MODULE (管理員面板) ======
+// ==========================================
+let adminUsers = [];
+let adminSelectedUid = null;
+let adminSelectedUserRecs = [];
+let adminSelectedUserRewards = [];
+
+async function loadAdminUsers() {
+  try {
+    const snap = await db.collection("users").get();
+    adminUsers = snap.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+  } catch(e) { console.error(e); }
+}
+
+async function selectAdminUser(uid) {
+  adminSelectedUid = uid;
+  if(!uid) { renderAdmin(); return; }
+
+  try {
+    // 獲取該用戶記錄
+    const recSnap = await db.collection("users").doc(uid).collection("records").get();
+    adminSelectedUserRecs = recSnap.docs.map(d => ({__backendId: d.id, ...d.data()}));
+    
+    // 獲取該用戶商店設定
+    const rewSnap = await db.collection("users").doc(uid).collection("settings").doc("rewards").get();
+    if(rewSnap.exists && rewSnap.data().rewards) adminSelectedUserRewards = rewSnap.data().rewards;
+    else adminSelectedUserRewards = JSON.parse(JSON.stringify(defaultRewards));
+    
+    renderAdmin();
+  } catch(e) { showToast('讀取失敗', 'error'); }
+}
+
+async function renderAdmin() {
+  const el = document.getElementById('page-admin');
+  if(adminUsers.length === 0) await loadAdminUsers();
+
+  let html = `<h2 class="font-extrabold text-xl text-primary mb-4">🛡️ 管理員面板</h2>
+    <div class="bg-white rounded-2xl shadow-sm p-4 mb-4 card-enter">
+      <label class="text-xs font-bold text-slate-500 block mb-2">選擇要管理嘅用戶</label>
+      <select id="adminUserSelect" onchange="selectAdminUser(this.value)" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold">
+        <option value="">-- 請選擇用戶 --</option>
+        ${adminUsers.map(u => `<option value="${u.uid}" ${adminSelectedUid===u.uid?'selected':''}>${u.displayId} (${u.email})</option>`).join('')}
+      </select>
+    </div>`;
+
+  if(adminSelectedUid) {
+    const pt = getTotalPoints(adminSelectedUserRecs, adminSelectedUserRewards);
+    const unusedVouchers = adminSelectedUserRecs.filter(r => r.record_type === 'redemption' && !r.used);
+    
+    html += `<div class="grid grid-cols-2 gap-3 mb-4 card-enter">
+      <div class="bg-gradient-to-br from-warm2 to-warm3 rounded-2xl p-4 text-white shadow-sm">
+        <div class="text-xs font-bold opacity-80">現有積分</div>
+        <div class="text-3xl font-extrabold mt-1">${pt.available}⭐</div>
+      </div>
+      <div class="bg-gradient-to-br from-blue-400 to-primary rounded-2xl p-4 text-white shadow-sm">
+        <div class="text-xs font-bold opacity-80">未用換領券</div>
+        <div class="text-3xl font-extrabold mt-1">${unusedVouchers.length} 張</div>
+      </div>
+    </div>
+    
+    <div class="space-y-3 card-enter">
+      <button onclick="adminAdjustPointsModal()" class="w-full bg-white shadow-sm p-4 rounded-xl font-bold text-primary hover:bg-sky1 transition flex items-center justify-between">
+        <div class="flex items-center gap-2"><span class="text-xl">⚖️</span> 調整積分</div> <i data-lucide="chevron-right" class="w-5 h-5"></i>
+      </button>
+      <button onclick="adminManageShopModal()" class="w-full bg-white shadow-sm p-4 rounded-xl font-bold text-primary hover:bg-sky1 transition flex items-center justify-between">
+        <div class="flex items-center gap-2"><span class="text-xl">🎁</span> 設定商店項目</div> <i data-lucide="chevron-right" class="w-5 h-5"></i>
+      </button>
+      <button onclick="adminViewWorkoutsModal()" class="w-full bg-white shadow-sm p-4 rounded-xl font-bold text-primary hover:bg-sky1 transition flex items-center justify-between">
+        <div class="flex items-center gap-2"><span class="text-xl">🏋️‍♂️</span> 查閱運動記錄</div> <i data-lucide="chevron-right" class="w-5 h-5"></i>
+      </button>
+      <button onclick="adminViewVouchersModal()" class="w-full bg-white shadow-sm p-4 rounded-xl font-bold text-primary hover:bg-sky1 transition flex items-center justify-between">
+        <div class="flex items-center gap-2"><span class="text-xl">🎫</span> 換領券及歷史</div> <i data-lucide="chevron-right" class="w-5 h-5"></i>
+      </button>
+    </div>`;
+  }
+  el.innerHTML = html;
+  lucide.createIcons();
+}
+
+// -- Admin: 調整分數 --
+function adminAdjustPointsModal() {
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <h3 class="font-extrabold text-lg text-primary mb-3">⚖️ 調整積分</h3>
+    <p class="text-sm text-slate-500 mb-3">輸入正數加分，負數扣分</p>
+    <input id="adminPointsInput" type="number" placeholder="例如: 50 或 -20" class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition font-semibold mb-4 text-center text-xl">
+    <input id="adminPointsNote" type="text" placeholder="備註 (例如: 管理員獎勵)" class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition font-semibold mb-4 text-sm">
+    <button onclick="adminSubmitPoints()" class="w-full bg-primary text-white font-bold py-3 rounded-xl hover:bg-primaryDk transition mb-2">確認修改</button>
+    <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`);
+}
+async function adminSubmitPoints() {
+  const pts = parseInt(document.getElementById('adminPointsInput').value);
+  const notes = document.getElementById('adminPointsNote').value || '系統調整';
+  if(isNaN(pts)) return;
+  const rec = { record_type: 'point_adjustment', date: toDateStr(new Date()), points: pts, notes: notes, timestamp: new Date().toISOString() };
+  await db.collection("users").doc(adminSelectedUid).collection("records").add(rec);
+  closeModal(); showToast('積分已調整', 'success'); selectAdminUser(adminSelectedUid);
+}
+
+// -- Admin: 查閱運動記錄 --
+function adminViewWorkoutsModal() {
+  const workouts = adminSelectedUserRecs.filter(r => r.record_type === 'workout').sort((a,b) => b.date.localeCompare(a.date)).slice(0, 50); // 顯示最近50條
+  let html = `<div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85%;overflow-y:auto;">
+    <h3 class="font-extrabold text-lg text-primary mb-3">🏋️‍♂️ 最近 50 條運動記錄</h3>`;
+  if(workouts.length===0) html += `<p class="text-center text-slate-400 py-4">無記錄</p>`;
+  workouts.forEach(w => {
+    html += `<div class="bg-sky1 rounded-xl p-3 mb-2">
+      <div class="flex justify-between"><span class="font-bold text-sm">${w.exercise}</span><span class="text-xs font-bold text-warm3">+${w.points}⭐</span></div>
+      <div class="text-xs text-slate-500 mt-1">${w.date} | ${w.category}</div>
+    </div>`;
+  });
+  html += `<button onclick="closeModal()" class="w-full mt-4 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">關閉</button></div>`;
+  showModal(html);
+}
+
+// -- Admin: 商店設定 --
+window._adminNewReward = () => {
+  const name = prompt('獎勵名稱 (例如: 咖啡):'); if(!name) return;
+  const emoji = prompt('Emoji (例如: ☕):') || '🎁';
+  const cost = parseInt(prompt('所需積分 (例如: 50):')); if(isNaN(cost)) return;
+  adminSelectedUserRewards.push({ id: 'r'+Date.now(), name, emoji, cost, desc: '管理員自訂獎勵' });
+  adminSaveRewardsToDB();
+};
+
+window._adminEditReward = (id) => {
+  const rw = adminSelectedUserRewards.find(r => r.id === id);
+  if(!rw) return;
+  const newName = prompt('修改獎勵名稱:', rw.name);
+  if(!newName || !newName.trim()) return;
+  const newEmoji = prompt('修改 Emoji:', rw.emoji) || '🎁';
+  const costStr = prompt('修改所需積分:', rw.cost);
+  if(costStr === null) return;
+  const newCost = parseInt(costStr);
+  if(isNaN(newCost)) return;
+
+  rw.name = newName.trim();
+  rw.emoji = newEmoji;
+  rw.cost = newCost;
+  adminSaveRewardsToDB();
+};
+
+window._adminDeleteReward = (id) => {
+  if(!confirm('確定刪除此獎勵？')) return;
+  adminSelectedUserRewards = adminSelectedUserRewards.filter(r => r.id !== id);
+  adminSaveRewardsToDB();
+};
+
+// 拖拉排序邏輯 (Drag & Drop)
+let adminDragStartIndex = -1;
+window._adminDragStart = (e, index) => {
+  adminDragStartIndex = index;
+  e.target.style.opacity = '0.5'; // 拖拉時變半透明
+};
+window._adminDragOver = (e) => {
+  e.preventDefault(); // 必須 preventDefault 先可以 Drop
+};
+window._adminDrop = (e, index) => {
+  e.preventDefault();
+  if(adminDragStartIndex === -1 || adminDragStartIndex === index) return;
+  // 將拖拉嘅項目抽出嚟，然後插入去新位置
+  const draggedItem = adminSelectedUserRewards.splice(adminDragStartIndex, 1)[0];
+  adminSelectedUserRewards.splice(index, 0, draggedItem);
+  adminSaveRewardsToDB();
+};
+window._adminDragEnd = (e) => {
+  e.target.style.opacity = '1'; // 拖拉完回復正常
+};
+
+async function adminSaveRewardsToDB() {
+  await db.collection("users").doc(adminSelectedUid).collection("settings").doc("rewards").set({ rewards: adminSelectedUserRewards }, { merge: true });
+  adminManageShopModal(); // 重新渲染畫面
+}
+
+function adminManageShopModal() {
+  let html = `<div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85%;overflow-y:auto;">
+    <div class="flex justify-between items-center mb-2">
+      <h3 class="font-extrabold text-lg text-primary">🎁 專屬商店設定</h3>
+      <button onclick="window._adminNewReward()" class="text-xs font-bold bg-primary text-white px-2 py-1 rounded">➕ 新增</button>
+    </div>
+    <p class="text-[10px] text-slate-400 mb-3 font-semibold">💡 提示：按住項目可以上下拖拉改變次序</p>`;
+    
+  adminSelectedUserRewards.forEach((rw, index) => {
+    html += `<div draggable="true"
+      ondragstart="window._adminDragStart(event, ${index})"
+      ondragover="window._adminDragOver(event)"
+      ondrop="window._adminDrop(event, ${index})"
+      ondragend="window._adminDragEnd(event)"
+      class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-2 flex justify-between items-center cursor-move hover:shadow-sm transition-all active:cursor-grabbing">
+      <div class="flex items-center gap-2 pointer-events-none">
+        <span class="text-xl">${rw.emoji}</span>
+        <div>
+          <div class="font-bold text-sm">${rw.name}</div>
+          <div class="text-xs text-amber-600 font-bold">${rw.cost}⭐</div>
+        </div>
+      </div>
+      <div class="flex gap-1.5 flex-shrink-0">
+        <button onclick="window._adminEditReward('${rw.id}')" class="text-xs font-bold text-blue-500 bg-blue-100 px-3 py-1 rounded-lg hover:bg-blue-200 transition">編輯</button>
+        <button onclick="window._adminDeleteReward('${rw.id}')" class="text-xs font-bold text-red-500 bg-red-100 px-3 py-1 rounded-lg hover:bg-red-200 transition">刪除</button>
+      </div>
+    </div>`;
+  });
+  html += `<button onclick="closeModal()" class="w-full mt-4 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">完成</button></div>`;
+  showModal(html);
+}
+
+// -- Admin: 換領券及歷史 --
+function adminViewVouchersModal() {
+  const reds = adminSelectedUserRecs.filter(r => r.record_type === 'redemption').sort((a,b) => b.redeemed_at.localeCompare(a.redeemed_at));
+  let html = `<div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85%;overflow-y:auto;">
+    <h3 class="font-extrabold text-lg text-primary mb-3">🎫 換領歷史及票券</h3>`;
+  if(reds.length===0) html += `<p class="text-center text-slate-400 py-4">無記錄</p>`;
+  reds.forEach(r => {
+    const isUsed = r.used;
+    const rwName = r.name || '已下架獎勵'; const rwEmoji = r.emoji || '🎁';
+    const dateStr = new Date(r.redeemed_at).toLocaleDateString('zh-HK');
+    html += `<div class="${isUsed?'bg-slate-100':'bg-green-100 border border-green-300'} rounded-xl p-3 mb-2 flex justify-between items-center">
+      <div>
+        <div class="font-bold text-sm flex items-center gap-1"><span class="text-lg">${rwEmoji}</span> ${rwName}</div>
+        <div class="text-[10px] text-slate-500 mt-1">換領於: ${dateStr}</div>
+      </div>
+      <span class="text-xs font-bold px-2 py-1 rounded-full ${isUsed?'bg-slate-200 text-slate-500':'bg-green-500 text-white'}">${isUsed?'已使用':'未使用'}</span>
+    </div>`;
+  });
+  html += `<button onclick="closeModal()" class="w-full mt-4 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">關閉</button></div>`;
+  showModal(html);
+}
+
+// Apply saved font size
+const savedFontSize = parseInt(localStorage.getItem('gq_fontsize'))||16;
+document.body.style.fontSize = savedFontSize + 'px';
+
+lucide.createIcons();
+</script>
+</body>
+</html>
