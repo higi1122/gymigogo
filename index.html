@@ -527,9 +527,20 @@ let calHtml = `<div class="flex items-center justify-between mb-3">
             </a>`;
           }
 
-          detailHtml += `<div class="w-full text-left ${cardBgClass} rounded-xl p-3 mb-2 flex items-start justify-between transition-colors ${textColorClass}">
-            <button onclick="editRecord('${w.__backendId}')" oncontextmenu="showWorkoutMenu(event, '${w.__backendId}')" class="flex-1 flex items-start gap-2 border-none bg-none cursor-pointer text-left">
-              ${subcatDisplay ? `<div class="flex-shrink-0 mt-0.5">${subcatDisplay}</div>` : ''}
+        detailHtml += `<div class="w-full text-left ${cardBgClass} rounded-xl p-3 mb-2 flex items-start justify-between transition-colors ${textColorClass}">
+            <button 
+              ontouchstart="window.handlePressStart(event, '${w.__backendId}')" 
+              ontouchend="window.handlePressEnd()" 
+              ontouchmove="window.handlePressEnd()" 
+              onmousedown="window.handlePressStart(event, '${w.__backendId}')" 
+              onmouseup="window.handlePressEnd()" 
+              onmouseleave="window.handlePressEnd()" 
+              onclick="window.handleRecordClick(event, '${w.__backendId}')" 
+              oncontextmenu="event.preventDefault();" 
+              class="flex-1 flex items-start gap-2 border-none bg-none cursor-pointer text-left select-none" 
+              style="-webkit-touch-callout: none;">              
+              
+    ${subcatDisplay ? `<div class="flex-shrink-0 mt-0.5">${subcatDisplay}</div>` : ''}
               <div class="flex-1">
                 <div class="font-bold text-sm">${w.exercise}</div>
                 <div class="text-xs opacity-75 mt-1">${formatWorkoutDetail(w)}</div>
@@ -595,6 +606,36 @@ function formatWorkoutDetail(w) {
 }
 
 // ========== CLIPBOARD FUNCTIONS ==========
+let pressTimer = null;
+let isLongPress = false;
+
+window.handlePressStart = (e, backendId) => {
+  isLongPress = false;
+  if (pressTimer) clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => {
+    isLongPress = true;
+    // 觸發微震動回饋 (如果手機支援)
+    if (navigator.vibrate) navigator.vibrate(50);
+    showWorkoutMenu(e, backendId);
+  }, 600); // 600毫秒當作長按
+};
+
+window.handlePressEnd = () => {
+  if (pressTimer) {
+    clearTimeout(pressTimer);
+    pressTimer = null;
+  }
+};
+
+window.handleRecordClick = (e, backendId) => {
+  if (isLongPress) {
+    e.preventDefault();
+    e.stopPropagation();
+    return; // 如果係長按，就唔好觸發編輯
+  }
+  editRecord(backendId);
+};
+
 function showWorkoutMenu(e, backendId) {
   e.preventDefault();
   e.stopPropagation();
