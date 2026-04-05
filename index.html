@@ -83,16 +83,16 @@ tailwind.config = {
    <div class="float-anim text-7xl mb-4">
     🏋️‍♀️
    </div>
-   <h1 class="text-3xl font-extrabold text-primary mb-1">Gymigogo</h1>
-   <p class="text-sky3 font-semibold mb-8">Work(out) Hard Play Hard✨</p>
+<h1 class="text-3xl font-extrabold text-primary mb-1">Gymigogo</h1>
+   <p class="text-white font-semibold mb-8">Work(out) Hard Play Hard✨</p>
 <div class="bg-white rounded-2xl shadow-lg p-6 w-full max-w-sm text-left">
-    <div class="mb-4">
+<div class="mb-4">
       <label class="block text-sm font-bold text-slate-600 mb-2">帳號 (ID)</label> 
-      <input id="nameInput" type="text" placeholder="輸入帳號..." class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition-colors font-semibold" maxlength="20">
+      <input id="nameInput" type="text" placeholder="輸入帳號..." onkeypress="if(event.key === 'Enter') doLogin()" class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition-colors font-semibold" maxlength="20">
     </div>
     <div class="mb-4">
       <label class="block text-sm font-bold text-slate-600 mb-2">密碼</label> 
-      <input id="pwdInput" type="password" placeholder="輸入密碼..." class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition-colors font-semibold">
+      <input id="pwdInput" type="password" placeholder="輸入密碼..." onkeypress="if(event.key === 'Enter') doLogin()" class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition-colors font-semibold">
     </div>
     <p id="loginError" class="text-red-400 text-sm font-semibold mb-2 hidden text-center">請輸入帳號同密碼</p>
     <button id="loginBtn" onclick="doLogin()" class="w-full bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition-colors"> 開始旅程 🚀 </button>
@@ -176,9 +176,9 @@ const defaultRewards = [
   { id:'r7', name:'豪華大餐($500)', emoji:'🥩🍤🍖🧁', cost:1500, desc:'食到飽為止！' },
   { id:'r8', name:'現金獎($50)', emoji:'💰', cost:250, desc:'$' },
   { id:'r9', name:'現金獎($100)', emoji:'💰💰', cost:480, desc:'$$' },
-  { id:'r10', name:'自選獎品($500)', emoji:'🎁', cost:1800, desc:'你真棒！' }
-  { id:'r11', name:'自選獎品($1000)', emoji:'🎁🎁', cost:3500, desc:'你真棒棒！' }
-    { id:'r11', name:'自選獎品($2000)', emoji:'🎁🎁🎁', cost:6500, desc:'你真棒棒棒！' }
+  { id:'r10', name:'自選獎品($500)', emoji:'🎁', cost:1800, desc:'你真棒！' },
+  { id:'r11', name:'自選獎品($1000)', emoji:'🎁🎁', cost:3500, desc:'你真棒棒！' },
+  { id:'r12', name:'自選獎品($2000)', emoji:'🎁🎁🎁', cost:6500, desc:'你真棒棒棒！' }
 ];
 
 let rewards = JSON.parse(JSON.stringify(defaultRewards));
@@ -453,17 +453,20 @@ let calHtml = `<div class="flex items-center justify-between mb-3">
       const cats = [...new Set(dayWorkouts.map(w=>w.category))];
       cats.forEach(cat => {
         if(cat === 'strength') {
-          const subcats = [...new Set(dayWorkouts.filter(w=>w.category==='strength').map(w=>{
+const subcats = [...new Set(dayWorkouts.filter(w=>w.category==='strength').map(w=>{
             const ex = w.exercise;
             for(const [sc, items] of Object.entries(exerciseData.strength.subcats)) {
               if(items.includes(ex)) return sc;
             }
             return '';
           }).filter(Boolean))];
-const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '臂': 'bg-purple-100 text-purple-700', '腹': 'bg-teal-100 text-teal-700' };          subcats.forEach(sc => {
+          
+          subcats.forEach(sc => {
+            const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '臂': 'bg-purple-100 text-purple-700', '腹': 'bg-stone-200 text-stone-700' };
             allTags.push(`<span class="text-[10px] font-bold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-0.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">${sc}</span>`);
           });
         } else {
+          
           const labels = { cardio: '有氧', hiit: 'HIIT', functional: '功能性' };
           const colors = { cardio: 'bg-orange-100 text-orange-700', hiit: 'bg-pink-100 text-pink-700', functional: 'bg-indigo-100 text-indigo-700' };
           allTags.push(`<span class="text-[10px] font-bold ${colors[cat]||'bg-slate-100 text-slate-700'} px-0.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">${labels[cat]||cat}</span>`);
@@ -1251,7 +1254,7 @@ function renderHistory() {
           
           for(const [sc, exList] of Object.entries(exerciseData.strength.subcats)) {
             if(exList.includes(w.exercise)) {
-              const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '臂': 'bg-purple-100 text-purple-700' };
+const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '臂': 'bg-purple-100 text-purple-700', '腹': 'bg-stone-200 text-stone-700' };
               subcatDisplay = `<span class="text-xs font-semibold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded-full flex-shrink-0">${sc}</span>`;
               break;
             }
@@ -1694,9 +1697,12 @@ async function renderAdmin() {
       </div>
     </div>
     
-    <div class="space-y-3 card-enter">
+  <div class="space-y-3 card-enter">
+      <button onclick="adminRecalculatePoints()" class="w-full bg-white shadow-sm p-4 rounded-xl font-bold text-blue-600 hover:bg-blue-50 transition flex items-center justify-between border border-blue-100">
+        <div class="flex items-center gap-2"><span class="text-xl">🔄</span> 升級/重算所有歷史積分</div> <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+      </button>
       <button onclick="adminAdjustPointsModal()" class="w-full bg-white shadow-sm p-4 rounded-xl font-bold text-primary hover:bg-sky1 transition flex items-center justify-between">
-        <div class="flex items-center gap-2"><span class="text-xl">⚖️</span> 調整積分</div> <i data-lucide="chevron-right" class="w-5 h-5"></i>
+        <div class="flex items-center gap-2"><span class="text-xl">⚖️</span> 手動調整積分</div> <i data-lucide="chevron-right" class="w-5 h-5"></i>
       </button>
       <button onclick="adminManageShopModal()" class="w-full bg-white shadow-sm p-4 rounded-xl font-bold text-primary hover:bg-sky1 transition flex items-center justify-between">
         <div class="flex items-center gap-2"><span class="text-xl">🎁</span> 設定商店項目</div> <i data-lucide="chevron-right" class="w-5 h-5"></i>
@@ -1732,6 +1738,38 @@ async function adminSubmitPoints() {
   await db.collection("users").doc(adminSelectedUid).collection("records").add(rec);
   closeModal(); showToast('積分已調整', 'success'); selectAdminUser(adminSelectedUid);
 }
+
+// -- Admin: 重新計算歷史積分 --
+window.adminRecalculatePoints = async () => {
+  if(!confirm('⚠️ 確定要根據最新公式，重新計算呢位用戶所有歷史運動記錄嘅分數？\n(注意：此動作將會覆蓋舊分數，無法復原)')) return;
+  
+  const btn = document.querySelector('button:active') || document.body;
+  btn.style.opacity = '0.5';
+  showToast('正在逐筆重新計算中...', 'info');
+
+  try {
+    let updatedCount = 0;
+    // 搵出該用戶所有運動記錄 (不包括換領或系統加減分)
+    const workouts = adminSelectedUserRecs.filter(r => r.record_type === 'workout');
+    
+    for(const w of workouts) {
+      const newPoints = calcPoints(w);
+      // 如果新計出嚟嘅分 同 舊分唔同，就 Update 落 Firebase
+      if(w.points !== newPoints) {
+        await db.collection("users").doc(adminSelectedUid).collection("records").doc(w.__backendId).update({ points: newPoints });
+        updatedCount++;
+      }
+    }
+    
+    btn.style.opacity = '1';
+    showToast(`✅ 成功重算！共修正了 ${updatedCount} 筆記錄`, 'success');
+    selectAdminUser(adminSelectedUid); // 重新載入資料並刷新畫面
+  } catch(e) {
+    console.error(e);
+    showToast('重算失敗，請檢查網絡', 'error');
+    btn.style.opacity = '1';
+  }
+};
 
 // -- Admin: 刪除用戶記錄 / 撤銷積分 --
 window._adminDeleteRecord = async (backendId, points) => {
