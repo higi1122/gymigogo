@@ -122,7 +122,7 @@ const defaultExerciseData = {
       '背': ['引體向上','Cable 下拉','啞鈴划船','槓鈴划船','坐姿划船','T-Bar 划船'],
       '腿': ['Leg Press','Abductor/Adductor','Prone Leg Curl','Leg Extension','Squat'],
       '肩': ['啞鈴肩推','槓鈴肩推','側平舉','前平舉','反向飛鳥','Face Pull'],
-      '手臂': ['Cable 二頭彎舉','Cable 三頭下拉','啞鈴二頭彎舉','啞鈴過頭三頭屈伸','三頭下壓'],
+      '臂': ['Cable 二頭彎舉','Cable 三頭下拉','啞鈴二頭彎舉','啞鈴過頭三頭屈伸','三頭下壓'],
       '腹': ['捲腹','反向捲腹','俄羅斯轉體','懸垂舉腿','健腹輪']
     }
   },
@@ -138,7 +138,7 @@ functional: {
       '瑜伽': ['流瑜伽','陰瑜伽','力量瑜伽'],
       '徒手': ['Plank','山羊挺身','箱跳','波比跳','熊爬'],
       '拉伸': ['全身拉伸','上身拉伸','下身拉伸','髖關節活動'],
-      '指定組合': ['肩頸','背','手臂','腹']
+      '指定組合': ['肩頸','背','臂','腹']
     }
   }
 }; 
@@ -457,7 +457,7 @@ let calHtml = `<div class="flex items-center justify-between mb-3">
             }
             return '';
           }).filter(Boolean))];
-const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '手臂': 'bg-purple-100 text-purple-700', '腹': 'bg-teal-100 text-teal-700' };          subcats.forEach(sc => {
+const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '臂': 'bg-purple-100 text-purple-700', '腹': 'bg-teal-100 text-teal-700' };          subcats.forEach(sc => {
             allTags.push(`<span class="text-[10px] font-bold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-0.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">${sc}</span>`);
           });
         } else {
@@ -536,7 +536,7 @@ const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 tex
           if(w.category === 'strength') {
             for(const [sc, exList] of Object.entries(exerciseData.strength.subcats)) {
               if(exList.includes(w.exercise)) {
-const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '手臂': 'bg-purple-100 text-purple-700', '腹': 'bg-stone-200 text-stone-700' };               subcatDisplay = `<span class="text-xs font-semibold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded-full">${sc}</span>`;
+const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '臂': 'bg-purple-100 text-purple-700', '腹': 'bg-stone-200 text-stone-700' };               subcatDisplay = `<span class="text-xs font-semibold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded-full">${sc}</span>`;
                 break;
               }
             }
@@ -809,7 +809,7 @@ function openAddWorkout(date) {
       <div class="flex gap-2 overflow-x-auto pb-2 mb-3">`;
       
   // 2. 強制次分類排序
-    const subcatOrder = ['胸','背','腿','肩','手臂','腹','器械','一般運動','HIIT','瑜伽','徒手','拉伸','指定組合'];    subcats.sort((a, b) => {
+    const subcatOrder = ['胸','背','腿','肩','臂','腹','器械','一般運動','HIIT','瑜伽','徒手','拉伸','指定組合'];    subcats.sort((a, b) => {
       let idxA = subcatOrder.indexOf(a);
       let idxB = subcatOrder.indexOf(b);
       if(idxA === -1) idxA = 999; // 新自訂嘅分類排最後
@@ -819,8 +819,8 @@ function openAddWorkout(date) {
 
    // 3. 補回次分類專屬顏色
     subcats.forEach(sc => {
-      const subcatColors = { '胸': 'bg-red-100 text-red-700 hover:bg-red-200', '背': 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200', '腿': 'bg-green-100 text-green-700 hover:bg-green-200', '肩': 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200', '手臂': 'bg-purple-100 text-purple-700 hover:bg-purple-200', '腹': 'bg-stone-200 text-stone-700 hover:bg-stone-300', '器械': 'bg-orange-100 text-orange-700 hover:bg-orange-200', '一般運動': 'bg-orange-100 text-orange-700 hover:bg-orange-200', 'HIIT': 'bg-pink-100 text-pink-700 hover:bg-pink-200', '瑜伽': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '徒手': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '拉伸': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '指定組合': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' };
-      const selectedStyles = { '胸': 'bg-red-300 text-red-900', '背': 'bg-cyan-300 text-cyan-900', '腿': 'bg-green-300 text-green-900', '肩': 'bg-yellow-300 text-yellow-900', '手臂': 'bg-purple-300 text-purple-900', '腹': 'bg-stone-400 text-stone-900', '器械': 'bg-orange-300 text-orange-900', '一般運動': 'bg-orange-300 text-orange-900', 'HIIT': 'bg-pink-300 text-pink-900', '瑜伽': 'bg-indigo-300 text-indigo-900', '徒手': 'bg-indigo-300 text-indigo-900', '拉伸': 'bg-indigo-300 text-indigo-900', '指定組合': 'bg-indigo-300 text-indigo-900' };
+      const subcatColors = { '胸': 'bg-red-100 text-red-700 hover:bg-red-200', '背': 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200', '腿': 'bg-green-100 text-green-700 hover:bg-green-200', '肩': 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200', '臂': 'bg-purple-100 text-purple-700 hover:bg-purple-200', '腹': 'bg-stone-200 text-stone-700 hover:bg-stone-300', '器械': 'bg-orange-100 text-orange-700 hover:bg-orange-200', '一般運動': 'bg-orange-100 text-orange-700 hover:bg-orange-200', 'HIIT': 'bg-pink-100 text-pink-700 hover:bg-pink-200', '瑜伽': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '徒手': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '拉伸': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '指定組合': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' };
+      const selectedStyles = { '胸': 'bg-red-300 text-red-900', '背': 'bg-cyan-300 text-cyan-900', '腿': 'bg-green-300 text-green-900', '肩': 'bg-yellow-300 text-yellow-900', '臂': 'bg-purple-300 text-purple-900', '腹': 'bg-stone-400 text-stone-900', '器械': 'bg-orange-300 text-orange-900', '一般運動': 'bg-orange-300 text-orange-900', 'HIIT': 'bg-pink-300 text-pink-900', '瑜伽': 'bg-indigo-300 text-indigo-900', '徒手': 'bg-indigo-300 text-indigo-900', '拉伸': 'bg-indigo-300 text-indigo-900', '指定組合': 'bg-indigo-300 text-indigo-900' };
       const sStyle = selectedStyles[sc] || 'bg-slate-400 text-white'; // 搵唔到顏色就用灰色
       const cColor = subcatColors[sc] || 'bg-slate-100 text-slate-700 hover:bg-slate-200';
       
@@ -1248,7 +1248,7 @@ function renderHistory() {
           
           for(const [sc, exList] of Object.entries(exerciseData.strength.subcats)) {
             if(exList.includes(w.exercise)) {
-              const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '手臂': 'bg-purple-100 text-purple-700' };
+              const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '臂': 'bg-purple-100 text-purple-700' };
               subcatDisplay = `<span class="text-xs font-semibold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded-full flex-shrink-0">${sc}</span>`;
               break;
             }
