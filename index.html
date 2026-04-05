@@ -25,6 +25,10 @@ body { font-family: 'Nunito', sans-serif; }
 .seg-active { background: #3b82f6; color: white; }
 .seg-inactive { background: #e2e8f0; color: #64748b; }
 input, select, textarea { font-size: 16px !important; }
+/* 隱藏原生數字框嘅上下小箭咀 */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; }
 .reward-card { background: linear-gradient(135deg, #fef3c7, #fde68a, #fcd34d); border-radius: 16px; }
 .reward-card-locked { background: linear-gradient(135deg, #f1f5f9, #e2e8f0); border-radius: 16px; }
 .voucher-bg { background: linear-gradient(135deg, #dbeafe, #bfdbfe, #93c5fd); }
@@ -118,24 +122,26 @@ const defaultExerciseData = {
       '背': ['引體向上','Cable 下拉','啞鈴划船','槓鈴划船','坐姿划船','T-Bar 划船'],
       '腿': ['Leg Press','Abductor/Adductor','Prone Leg Curl','Leg Extension','Squat'],
       '肩': ['啞鈴肩推','槓鈴肩推','側平舉','前平舉','反向飛鳥','Face Pull'],
-      '手臂': ['啞鈴二頭彎舉','Cable 二頭彎舉','三頭下壓','過頭三頭伸展','錘式彎舉']
+      '手臂': ['Cable 二頭彎舉','Cable 三頭下拉','啞鈴二頭彎舉','啞鈴過頭三頭屈伸','三頭下壓'],
+      '腹': ['捲腹','反向捲腹','俄羅斯轉體','懸垂舉腿','健腹輪']
     }
   },
   cardio: {
     label: '🏃 有氧', subcats: {
-      '器械': ['跑步機','爬山機','太空漫步機','單車機','划船機'],
-      '一般運動': ['羽毛球','乒乓波','行山','踩單車','跳繩','跑步']
+      '一般運動': ['羽毛球','乒乓波','行山','踩單車','跳繩','跑步','滑雪'],
+      '器械': ['跑步機','爬山機','太空漫步機','單車機','划船機']
     }
   },
   hiit: { label: '🔥 HIIT', subcats: { 'HIIT': ['Tabata','AMRAP','EMOM','Circuit Training','Burpee Challenge'] }},
-  functional: {
+functional: {
     label: '🧘 功能性', subcats: {
       '瑜伽': ['流瑜伽','陰瑜伽','力量瑜伽'],
       '徒手': ['Plank','山羊挺身','箱跳','波比跳','熊爬'],
-      '拉伸': ['全身拉伸','上身拉伸','下身拉伸','髖關節活動']
+      '拉伸': ['全身拉伸','上身拉伸','下身拉伸','髖關節活動'],
+      '指定組合': ['肩頸','背','手臂','腹']
     }
   }
-};
+}; 
 
 // 這是會被動態修改的變量
 let exerciseData = JSON.parse(JSON.stringify(defaultExerciseData));
@@ -161,8 +167,8 @@ const catColors = { strength: '#3b82f6', cardio: '#22c55e', hiit: '#ef4444', fun
 // ========== REWARDS ==========
 const defaultRewards = [
   { id:'r0', name:'測試獎勵', emoji:'🎲', cost:0, desc:'測試獎勵項目' },
-  { id:'r1', name:'朱古力', emoji:'🍫', cost:50, desc:'加油加油！' },
-  { id:'r2', name:'薯片', emoji:'🥔', cost:50, desc:'辛苦晒，食個零食！' },
+  { id:'r1', name:'朱古力', emoji:'🍫', cost:60, desc:'加油加油！' },
+  { id:'r2', name:'薯片', emoji:'🥔', cost:60, desc:'辛苦晒，食個零食！' },
   { id:'r3', name:'珍珠奶茶', emoji:'🧋', cost:150, desc:'一杯奶茶的快樂～' },
   { id:'r4', name:'蛋糕', emoji:'🍰', cost:150, desc:'蛋糕時間到！' },
   { id:'r5', name:'Cheat Meal', emoji:'🍔🍟', cost:300, desc:'盡情享受大餐！' },
@@ -182,10 +188,13 @@ let globalRewardsData = null;
 function calcPoints(rec) {
   if(rec.record_type !== 'workout') return 0;
   const cat = rec.category;
-  if(cat === 'strength') return Math.max(5, Math.round((rec.weight||0) * (rec.reps||0) * (rec.sets||1) / 50));
-  if(cat === 'cardio') return Math.max(5, Math.round(parseDurationMin(rec.duration) * 1.5));
-  if(cat === 'hiit') return Math.max(8, Math.round(parseDurationMin(rec.duration) * 2.5));
-  if(cat === 'functional') return Math.max(5, Math.round((rec.sets||1) * (rec.reps||1) * 0.8));
+  if(cat === 'strength') return Math.max(2, Math.round((rec.weight||0) * (rec.reps||0) * (rec.sets||1) / 300));
+  if(cat === 'cardio') return Math.max(5, Math.round(parseDurationMin(rec.duration) * 0.7));
+  if(cat === 'hiit') return Math.max(5, Math.round(parseDurationMin(rec.duration) * 1));
+if(cat === 'functional') {
+    if (rec.duration) return Math.max(5, Math.round(parseFloat(rec.duration) * 0.8));
+    return Math.max(5, Math.round((rec.sets||1) * (rec.reps||1) * 0.5));
+  }
   return 5;
 }
 function parseDurationMin(d) {
@@ -448,8 +457,7 @@ let calHtml = `<div class="flex items-center justify-between mb-3">
             }
             return '';
           }).filter(Boolean))];
-          const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '手臂': 'bg-purple-100 text-purple-700' };
-          subcats.forEach(sc => {
+const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '手臂': 'bg-purple-100 text-purple-700', '腹': 'bg-teal-100 text-teal-700' };          subcats.forEach(sc => {
             allTags.push(`<span class="text-[10px] font-bold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-0.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">${sc}</span>`);
           });
         } else {
@@ -528,8 +536,7 @@ let calHtml = `<div class="flex items-center justify-between mb-3">
           if(w.category === 'strength') {
             for(const [sc, exList] of Object.entries(exerciseData.strength.subcats)) {
               if(exList.includes(w.exercise)) {
-                const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '手臂': 'bg-purple-100 text-purple-700' };
-                subcatDisplay = `<span class="text-xs font-semibold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded-full">${sc}</span>`;
+const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '手臂': 'bg-purple-100 text-purple-700', '腹': 'bg-stone-200 text-stone-700' };               subcatDisplay = `<span class="text-xs font-semibold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-2 py-0.5 rounded-full">${sc}</span>`;
                 break;
               }
             }
@@ -612,19 +619,21 @@ function selectDate(d) {
 function formatWorkoutDetail(w) {
   if(w.category==='strength') return `${w.sets||1} 組 × ${w.reps||0} 次 @ ${w.weight||0}kg`;
   if(w.category==='cardio') {
-    let s = w.duration||'0:00';
+    let durStr = w.duration ? (String(w.duration).includes(':') ? w.duration : w.duration + ' 分鐘') : '0 分鐘';
+    let s = durStr;
     if(w.distance) s += ` | ${w.distance}km`;
     if(w.level) s += ` | Lv.${w.level}`;
     if(w.notes) s += ` | ${w.notes}`;
     return s;
   }
   if(w.category==='hiit') {
-    let s = w.duration||'0:00';
+    let durStr = w.duration ? (String(w.duration).includes(':') ? w.duration : w.duration + ' 分鐘') : '0 分鐘';
+    let s = durStr;
     if(w.notes) s += ` | ${w.notes}`;
     return s;
   }
-  if(w.category==='functional') {
-    let s = `${w.sets||1} 組 × ${w.reps||0} 次`;
+if(w.category==='functional') {
+    let s = w.duration ? (w.duration + ' 分鐘') : `${w.sets||1} 組 × ${w.reps||0} 次`;
     if(w.notes) s += ` | ${w.notes}`;
     return s;
   }
@@ -799,9 +808,8 @@ function openAddWorkout(date) {
     html += `</div>
       <div class="flex gap-2 overflow-x-auto pb-2 mb-3">`;
       
-    // 2. 強制次分類排序
-    const subcatOrder = ['胸','背','腿','肩','手臂','器械','一般運動','HIIT','瑜伽','徒手','拉伸'];
-    subcats.sort((a, b) => {
+  // 2. 強制次分類排序
+    const subcatOrder = ['胸','背','腿','肩','手臂','腹','器械','一般運動','HIIT','瑜伽','徒手','拉伸','指定組合'];    subcats.sort((a, b) => {
       let idxA = subcatOrder.indexOf(a);
       let idxB = subcatOrder.indexOf(b);
       if(idxA === -1) idxA = 999; // 新自訂嘅分類排最後
@@ -809,11 +817,10 @@ function openAddWorkout(date) {
       return idxA - idxB;
     });
 
-    // 3. 補回次分類專屬顏色
+   // 3. 補回次分類專屬顏色
     subcats.forEach(sc => {
-      const subcatColors = { '胸': 'bg-red-100 text-red-700 hover:bg-red-200', '背': 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200', '腿': 'bg-green-100 text-green-700 hover:bg-green-200', '肩': 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200', '手臂': 'bg-purple-100 text-purple-700 hover:bg-purple-200', '器械': 'bg-orange-100 text-orange-700 hover:bg-orange-200', '一般運動': 'bg-orange-100 text-orange-700 hover:bg-orange-200', 'HIIT': 'bg-pink-100 text-pink-700 hover:bg-pink-200', '瑜伽': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '徒手': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '拉伸': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' };
-      const selectedStyles = { '胸': 'bg-red-300 text-red-900', '背': 'bg-cyan-300 text-cyan-900', '腿': 'bg-green-300 text-green-900', '肩': 'bg-yellow-300 text-yellow-900', '手臂': 'bg-purple-300 text-purple-900', '器械': 'bg-orange-300 text-orange-900', '一般運動': 'bg-orange-300 text-orange-900', 'HIIT': 'bg-pink-300 text-pink-900', '瑜伽': 'bg-indigo-300 text-indigo-900', '徒手': 'bg-indigo-300 text-indigo-900', '拉伸': 'bg-indigo-300 text-indigo-900' };
-      
+      const subcatColors = { '胸': 'bg-red-100 text-red-700 hover:bg-red-200', '背': 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200', '腿': 'bg-green-100 text-green-700 hover:bg-green-200', '肩': 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200', '手臂': 'bg-purple-100 text-purple-700 hover:bg-purple-200', '腹': 'bg-stone-200 text-stone-700 hover:bg-stone-300', '器械': 'bg-orange-100 text-orange-700 hover:bg-orange-200', '一般運動': 'bg-orange-100 text-orange-700 hover:bg-orange-200', 'HIIT': 'bg-pink-100 text-pink-700 hover:bg-pink-200', '瑜伽': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '徒手': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '拉伸': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '指定組合': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' };
+      const selectedStyles = { '胸': 'bg-red-300 text-red-900', '背': 'bg-cyan-300 text-cyan-900', '腿': 'bg-green-300 text-green-900', '肩': 'bg-yellow-300 text-yellow-900', '手臂': 'bg-purple-300 text-purple-900', '腹': 'bg-stone-400 text-stone-900', '器械': 'bg-orange-300 text-orange-900', '一般運動': 'bg-orange-300 text-orange-900', 'HIIT': 'bg-pink-300 text-pink-900', '瑜伽': 'bg-indigo-300 text-indigo-900', '徒手': 'bg-indigo-300 text-indigo-900', '拉伸': 'bg-indigo-300 text-indigo-900', '指定組合': 'bg-indigo-300 text-indigo-900' };
       const sStyle = selectedStyles[sc] || 'bg-slate-400 text-white'; // 搵唔到顏色就用灰色
       const cColor = subcatColors[sc] || 'bg-slate-100 text-slate-700 hover:bg-slate-200';
       
@@ -855,31 +862,37 @@ if(isExEditMode) {
       }
     }
 
-    // Input fields based on category
+   // Input fields based on category
     if(selExercise) {
       html += '<div class="space-y-3 mt-3 text-left">';
       if(selCat === 'strength') {
-        html += inputField('weight', '重量 (kg)', 'number', '', 'e.g. 40');
-        html += inputField('reps', '次數 (Reps)', 'number', '', 'e.g. 12');
-        html += inputField('sets', '組數 (Sets)', 'number', '', 'e.g. 3');
-      } else if(selCat === 'cardio') {
-        html += inputField('duration', '時間 (分:秒)', 'text', '', 'e.g. 30:00');
+        // 加入預設值：20kg, 12次, 3組
+        html += inputField('weight', '重量 (kg)', 'number', 20, 'e.g. 40');
+        html += inputField('reps', '次數 (Reps)', 'number', 12, 'e.g. 12');
+        html += inputField('sets', '組數 (Sets)', 'number', 3, 'e.g. 3');
+     } else if(selCat === 'cardio') {
+        // 加入預設值：30分鐘, 3km, 阻力 5
+        html += inputField('duration', '時間 (分鐘)', 'number', 30, 'e.g. 30');
         const isOutdoor = exerciseData.cardio.subcats['一般運動']?.includes(selExercise);
         if(!isOutdoor) {
-          html += inputField('distance', '距離 (km)', 'number', '', 'e.g. 5');
-          html += inputField('level', '阻力等級', 'number', '', 'e.g. 8');
-        }
+          html += inputField('distance', '距離 (km)', 'number', 3, 'e.g. 5');
+          html += inputField('level', '阻力等級', 'number', 5, 'e.g. 8');
+      }
         html += inputField('notes', '備註', 'text', '', '');
-        html += inputField('link', '連結 (如 YouTube)', 'text', '', 'https://...');
       } else if(selCat === 'hiit') {
-        html += inputField('duration', '時間 (分:秒)', 'text', '', 'e.g. 20:00');
-        html += inputField('notes', '備註', 'text', '', '');
+        html += inputField('duration', '時間 (分鐘)', 'number', 20, 'e.g. 20');
         html += inputField('link', '連結 (如 YouTube)', 'text', '', 'https://...');
-      } else if(selCat === 'functional') {
-        html += inputField('sets', '組數 (Sets)', 'number', '', 'e.g. 3');
-        html += inputField('reps', '次數 (Reps)', 'number', '', 'e.g. 15');
         html += inputField('notes', '備註', 'text', '', '');
+} else if(selCat === 'functional') {
+        const isTimeBased = ['瑜伽', '拉伸', '指定組合'].includes(selSubcat);
+        if (isTimeBased) {
+          html += inputField('duration', '時間 (分鐘)', 'number', 20, 'e.g. 20');
+        } else {
+          html += inputField('sets', '組數 (Sets)', 'number', 3, 'e.g. 3');
+          html += inputField('reps', '次數 (Reps)', 'number', 15, 'e.g. 15');
+        }
         html += inputField('link', '連結 (如 YouTube)', 'text', '', 'https://...');
+        html += inputField('notes', '備註', 'text', '', '');
       }
       html += `</div>
         <button onclick="submitWorkout('${date}','${selCat}','${selExercise.replace(/'/g,"\\'")}')" id="submitWorkoutBtn" class="w-full mt-4 bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition">
@@ -924,9 +937,44 @@ html += `<button onclick="closeModal()" class="w-full mt-2 bg-slate-100 text-sla
 }
 
 function inputField(id, label, type, val, ph) {
+  // 如果係數字框，就渲染成 [-] 輸入框 [+] 嘅樣式
+  if (type === 'number') {
+    // 智能判斷每次加減嘅幅度 (Step)
+    let step = 1;
+    if (id.includes('weight')) step = 2.5; // 重量預設每次加 2.5kg
+    else if (id.includes('distance')) step = 0.5; // 距離預設加 0.5km
+    else if (id.includes('duration')) step = 5; // 時間每次加減 5 分鐘
+    
+    return `<div>
+      <label class="text-xs font-bold text-slate-500 block mb-1">${label}</label>
+      <div class="flex items-center shadow-sm rounded-xl overflow-hidden border-2 border-sky2 focus-within:border-primary focus-within:ring-2 focus-within:ring-sky1 transition-all bg-white">
+        <button type="button" onclick="window._stepInput('add_${id}', -${step})" class="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-sky1 text-primary font-extrabold text-2xl hover:bg-sky2 active:bg-sky3 transition touch-none select-none">-</button>
+        <input id="add_${id}" type="number" value="${val}" placeholder="${ph}" step="any" class="w-full h-12 px-2 text-center focus:outline-none font-extrabold text-slate-700 bg-white text-lg">
+        <button type="button" onclick="window._stepInput('add_${id}', ${step})" class="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-sky1 text-primary font-extrabold text-2xl hover:bg-sky2 active:bg-sky3 transition touch-none select-none">+</button>
+      </div>
+    </div>`;
+  }
+  
+  // 如果係普通文字框 (例如備註/連結)，保持原樣
   return `<div><label class="text-xs font-bold text-slate-500 block mb-1">${label}</label>
-    <input id="add_${id}" type="${type}" value="${val}" placeholder="${ph}" step="${type==='number'?'any':''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold"></div>`;
+    <input id="add_${id}" type="${type}" value="${val}" placeholder="${ph}" class="w-full border-2 border-sky2 rounded-xl px-3 py-3 focus:border-primary focus:outline-none transition font-semibold shadow-sm"></div>`;
 }
+
+// 處理 +/- 按鈕點擊事件
+window._stepInput = (id, delta) => {
+  const input = document.getElementById(id);
+  if(!input) return;
+  // 攞現有數值，如果係吉嘅就當係 0
+  let val = parseFloat(input.value) || 0;
+  val += delta;
+  if(val < 0) val = 0; // 防止變負數
+  
+  // 解決 JavaScript 小數點加減誤差 (例如 0.1 + 0.2 = 0.300000004)
+  input.value = parseFloat(val.toFixed(2));
+  
+  // 觸發微震動 (手機手感更好)
+  if (navigator.vibrate) navigator.vibrate(20);
+};
 
 async function submitWorkout(date, cat, exercise) {
   const btn = document.getElementById('submitWorkoutBtn');
@@ -1344,23 +1392,28 @@ function editRecord(backendId) {
     <p class="text-sm font-bold text-slate-500 mb-3">${rec.exercise} - ${rec.date}</p>
     <div class="space-y-3">`;
 
+
   if(rec.category === 'strength') {
     html += inputField('edit_weight', '重量 (kg)', 'number', rec.weight, '');
     html += inputField('edit_reps', '次數', 'number', rec.reps, '');
     html += inputField('edit_sets', '組數', 'number', rec.sets, '');
   } else if(rec.category === 'cardio') {
-    html += inputField('edit_duration', '時間', 'text', rec.duration, '');
+    html += inputField('edit_duration', '時間 (分鐘)', 'number', editDur, '');
     html += inputField('edit_distance', '距離 (km)', 'number', rec.distance, '');
     html += inputField('edit_level', '阻力等級', 'number', rec.level, '');
     html += inputField('edit_notes', '備註', 'text', rec.notes, '');
     html += inputField('edit_link', '連結', 'text', rec.link||'', '');
   } else if(rec.category === 'hiit') {
-    html += inputField('edit_duration', '時間', 'text', rec.duration, '');
+    html += inputField('edit_duration', '時間 (分鐘)', 'number', editDur, '');
     html += inputField('edit_notes', '備註', 'text', rec.notes||'', '');
     html += inputField('edit_link', '連結', 'text', rec.link||'', '');
-  } else {
-    html += inputField('edit_sets', '組數', 'number', rec.sets, '');
-    html += inputField('edit_reps', '次數', 'number', rec.reps, '');
+} else {
+    if (rec.duration) {
+      html += inputField('edit_duration', '時間 (分鐘)', 'number', rec.duration, '');
+    } else {
+      html += inputField('edit_sets', '組數', 'number', rec.sets, '');
+      html += inputField('edit_reps', '次數', 'number', rec.reps, '');
+    }
     html += inputField('edit_notes', '備註', 'text', rec.notes||'', '');
     html += inputField('edit_link', '連結', 'text', rec.link||'', '');
   }
