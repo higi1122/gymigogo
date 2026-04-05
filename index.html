@@ -807,23 +807,26 @@ function openAddWorkout(date) {
         </button>
 </div>`;
 
-    html += `<div class="grid grid-cols-2 gap-2 mb-3 max-h-32 overflow-y-auto p-1">`;
+html += `<div id="customExSortList" class="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-1 ${isExEditMode?'mb-1':'mb-3'}">`;
     
     exercises.forEach(ex => {
       if(isExEditMode) {
-        html += `<div class="relative flex">
-          <button class="flex-1 text-left px-3 py-2 rounded-xl text-sm font-semibold bg-sky1 text-slate-400 cursor-default">${ex}</button>
-          <button class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-md" onclick="event.stopPropagation();window._deleteEx('${ex.replace(/'/g,"\\'")}')">✕</button>
+        html += `<div class="relative flex bg-sky1 rounded-xl items-center shadow-sm">
+          <div class="ex-drag-handle cursor-move pl-2 pr-1 text-slate-400 active:text-primary touch-none">
+            <i data-lucide="grip-vertical" class="w-4 h-4"></i>
+          </div>
+          <div class="flex-1 text-left py-2 pr-2 text-sm font-semibold text-slate-500 pointer-events-none truncate">${ex}</div>
+          <button class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-md z-10" onclick="event.stopPropagation();window._deleteEx('${ex.replace(/'/g,"\\'")}')">✕</button>
         </div>`;
       } else {
-        html += `<button class="text-left px-3 py-2 rounded-xl text-sm font-semibold transition-all ${selExercise===ex?'bg-blue-400 text-blue-900 font-extrabold':'bg-sky1 text-slate-700 hover:bg-sky2'}" onclick="event.stopPropagation();window._addEx='${ex.replace(/'/g,"\\'")}';window._rerenderAdd()">${ex}</button>`;
+        html += `<button class="text-left px-3 py-2 rounded-xl text-sm font-semibold transition-all ${selExercise===ex?'bg-blue-400 text-blue-900 font-extrabold shadow-sm':'bg-sky1 text-slate-700 hover:bg-sky2'}" onclick="event.stopPropagation();window._addEx='${ex.replace(/'/g,"\\'")}';window._rerenderAdd()">${ex}</button>`;
       }
     });
+    html += '</div>';
 
     if(isExEditMode) {
-      html += `<button class="border-2 border-dashed border-sky3 text-primary rounded-xl text-sm font-bold flex items-center justify-center py-1.5" onclick="event.stopPropagation();window._addNewEx()">➕ 新增項目</button>`;
+      html += `<div class="px-1 mb-3"><button class="w-full border-2 border-dashed border-sky3 text-primary rounded-xl text-sm font-bold flex items-center justify-center py-1.5 transition-colors hover:bg-sky1" onclick="event.stopPropagation();window._addNewEx()">➕ 新增項目</button></div>`;
     }
-    html += '</div>';
 
     // Input fields based on category
     if(selExercise) {
@@ -857,9 +860,31 @@ function openAddWorkout(date) {
         </button>`;
     }
 
-    html += `<button onclick="closeModal()" class="w-full mt-2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button></div>`;
+html += `<button onclick="closeModal()" class="w-full mt-2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button></div>`;
     showModal(html);
     lucide.createIcons();
+    
+    // 初始化自訂項目嘅拖拉排序
+    if(isExEditMode) {
+      setTimeout(() => {
+        const list = document.getElementById('customExSortList');
+        if(list && typeof Sortable !== 'undefined') {
+          new Sortable(list, {
+            handle: '.ex-drag-handle', // 確保只可以撳住揸手位拉
+            animation: 150,
+            onEnd: function (evt) {
+              // 更新記憶體中嘅陣列次序
+              const arr = exerciseData[selCat].subcats[selSubcat];
+              const movedItem = arr.splice(evt.oldIndex, 1)[0];
+              arr.splice(evt.newIndex, 0, movedItem);
+              
+              // 即時同步上 Firebase
+              saveCustomExercises(); 
+            }
+          });
+        }
+      }, 50);
+    }
   }
 
   window._rerenderAdd = () => {
