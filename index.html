@@ -166,16 +166,19 @@ const catColors = { strength: '#3b82f6', cardio: '#22c55e', hiit: '#ef4444', fun
 
 // ========== REWARDS ==========
 const defaultRewards = [
-  { id:'r0', name:'測試獎勵', emoji:'🎲', cost:0, desc:'測試獎勵項目' },
+
   { id:'r1', name:'朱古力', emoji:'🍫', cost:60, desc:'加油加油！' },
   { id:'r2', name:'薯片', emoji:'🥔', cost:60, desc:'辛苦晒，食個零食！' },
   { id:'r3', name:'珍珠奶茶', emoji:'🧋', cost:150, desc:'一杯奶茶的快樂～' },
   { id:'r4', name:'蛋糕', emoji:'🍰', cost:150, desc:'蛋糕時間到！' },
-  { id:'r5', name:'Cheat Meal', emoji:'🍔🍟', cost:300, desc:'盡情享受大餐！' },
-  { id:'r6', name:'豪華自助餐', emoji:'🥩🍤🍖🧁', cost:800, desc:'食到飽為止！' },
-  { id:'r7', name:'現金獎($50)', emoji:'💰', cost:400, desc:'$$' },
-  { id:'r8', name:'現金獎($100)', emoji:'💰', cost:750, desc:'$$$$' },
-  { id:'r9', name:'自選獎品(<$500)', emoji:'🎁', cost:3500, desc:'終極獎勵！' }
+  { id:'r5', name:'麥當當($50)', emoji:'🍔🍟', cost:200, desc:'炸雞薯條雪糕！' },
+  { id:'r6', name:'大餐($200)', emoji:'🥩🍤', cost:700, desc:'盡情享受！' },
+  { id:'r7', name:'豪華大餐($500)', emoji:'🥩🍤🍖🧁', cost:1500, desc:'食到飽為止！' },
+  { id:'r8', name:'現金獎($50)', emoji:'💰', cost:250, desc:'$' },
+  { id:'r9', name:'現金獎($100)', emoji:'💰💰', cost:480, desc:'$$' },
+  { id:'r10', name:'自選獎品($500)', emoji:'🎁', cost:1800, desc:'你真棒！' }
+  { id:'r11', name:'自選獎品($1000)', emoji:'🎁🎁', cost:3500, desc:'你真棒棒！' }
+    { id:'r11', name:'自選獎品($2000)', emoji:'🎁🎁🎁', cost:6500, desc:'你真棒棒棒！' }
 ];
 
 let rewards = JSON.parse(JSON.stringify(defaultRewards));
@@ -188,11 +191,11 @@ let globalRewardsData = null;
 function calcPoints(rec) {
   if(rec.record_type !== 'workout') return 0;
   const cat = rec.category;
-  if(cat === 'strength') return Math.max(2, Math.round((rec.weight||0) * (rec.reps||0) * (rec.sets||1) / 300));
-  if(cat === 'cardio') return Math.max(5, Math.round(parseDurationMin(rec.duration) * 0.7));
+  if(cat === 'strength') return Math.max(3, Math.round((rec.weight||0) * (rec.reps||0) * (rec.sets||1) / 250));
+  if(cat === 'cardio') return Math.max(5, Math.round(parseDurationMin(rec.duration) * 0.6));
   if(cat === 'hiit') return Math.max(5, Math.round(parseDurationMin(rec.duration) * 1));
 if(cat === 'functional') {
-    if (rec.duration) return Math.max(5, Math.round(parseFloat(rec.duration) * 0.8));
+    if (rec.duration) return Math.max(5, Math.round(parseFloat(rec.duration) * 0.7));
     return Math.max(5, Math.round((rec.sets||1) * (rec.reps||1) * 0.5));
   }
   return 5;
