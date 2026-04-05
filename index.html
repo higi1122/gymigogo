@@ -3,8 +3,9 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -36,8 +37,11 @@ input, select, textarea { font-size: 16px !important; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; display: flex; align-items: center; justify-content: center; }
 .modal-box { background: white; border-radius: 20px; padding: 24px; max-width: 340px; width: 90%; text-align: center; }
 </style>
-  <script>
+<script>
 tailwind.config = {
+  future: {
+    hoverOnlyWhenSupported: true, // 👈 神奇嘅一行：只喺真正支援 hover 嘅設備(電腦)先啟用 hover 效果
+  },
   theme: { extend: { colors: {
     sky1: '#e0f2fe', sky2: '#bae6fd', sky3: '#7dd3fc', primary: '#3b82f6', primaryDk: '#2563eb',
     warm1: '#fef3c7', warm2: '#fde68a', warm3: '#f59e0b',
@@ -1668,62 +1672,63 @@ window._adminDeleteReward = (id) => {
   adminSaveRewardsToDB();
 };
 
-// 拖拉排序邏輯 (Drag & Drop)
-let adminDragStartIndex = -1;
-window._adminDragStart = (e, index) => {
-  adminDragStartIndex = index;
-  e.target.style.opacity = '0.5'; // 拖拉時變半透明
-};
-window._adminDragOver = (e) => {
-  e.preventDefault(); // 必須 preventDefault 先可以 Drop
-};
-window._adminDrop = (e, index) => {
-  e.preventDefault();
-  if(adminDragStartIndex === -1 || adminDragStartIndex === index) return;
-  // 將拖拉嘅項目抽出嚟，然後插入去新位置
-  const draggedItem = adminSelectedUserRewards.splice(adminDragStartIndex, 1)[0];
-  adminSelectedUserRewards.splice(index, 0, draggedItem);
-  adminSaveRewardsToDB();
-};
-window._adminDragEnd = (e) => {
-  e.target.style.opacity = '1'; // 拖拉完回復正常
-};
-
-async function adminSaveRewardsToDB() {
+// 拖拉排序邏輯 (改用 SortableJS 完美支援手機及動畫)
+async function adminSaveRewardsToDB(refreshUI = true) {
   await db.collection("users").doc(adminSelectedUid).collection("settings").doc("rewards").set({ rewards: adminSelectedUserRewards }, { merge: true });
-  adminManageShopModal(); // 重新渲染畫面
+  if(refreshUI) adminManageShopModal(); // 重新渲染畫面
 }
 
 function adminManageShopModal() {
-  let html = `<div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85%;overflow-y:auto;">
-    <div class="flex justify-between items-center mb-2">
+  let html = `<div class="modal-box max-w-md text-left flex flex-col" onclick="event.stopPropagation()" style="max-height:85vh;">
+    <div class="flex justify-between items-center mb-2 flex-shrink-0">
       <h3 class="font-extrabold text-lg text-primary">🎁 專屬商店設定</h3>
       <button onclick="window._adminNewReward()" class="text-xs font-bold bg-primary text-white px-2 py-1 rounded">➕ 新增</button>
     </div>
-    <p class="text-[10px] text-slate-400 mb-3 font-semibold">💡 提示：按住項目可以上下拖拉改變次序</p>`;
+    <p class="text-[10px] text-slate-400 mb-3 font-semibold flex-shrink-0">💡 提示：按住左邊 <i data-lucide="grip-vertical" class="w-3 h-3 inline"></i> 圖示可以上下拖拉排位</p>
     
-  adminSelectedUserRewards.forEach((rw, index) => {
-    html += `<div draggable="true"
-      ondragstart="window._adminDragStart(event, ${index})"
-      ondragover="window._adminDragOver(event)"
-      ondrop="window._adminDrop(event, ${index})"
-      ondragend="window._adminDragEnd(event)"
-      class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-2 flex justify-between items-center cursor-move hover:shadow-sm transition-all active:cursor-grabbing">
-      <div class="flex items-center gap-2 pointer-events-none">
-        <span class="text-xl">${rw.emoji}</span>
-        <div>
+    <div id="adminShopSortList" class="overflow-y-auto flex-1 min-h-[50px] -mx-1 px-1 pb-1">`;
+    
+  adminSelectedUserRewards.forEach((rw) => {
+    html += `<div class="bg-white border border-slate-200 rounded-xl p-3 mb-2 flex justify-between items-center hover:shadow-md transition-all shadow-sm" data-id="${rw.id}">
+      <div class="flex items-center gap-1.5">
+        <div class="drag-handle cursor-move p-2 -ml-2 text-slate-300 active:text-primary transition-colors touch-none">
+          <i data-lucide="grip-vertical" class="w-5 h-5"></i>
+        </div>
+        <span class="text-xl pointer-events-none">${rw.emoji}</span>
+        <div class="pointer-events-none">
           <div class="font-bold text-sm">${rw.name}</div>
           <div class="text-xs text-amber-600 font-bold">${rw.cost}⭐</div>
         </div>
       </div>
-      <div class="flex gap-1.5 flex-shrink-0">
-        <button onclick="window._adminEditReward('${rw.id}')" class="text-xs font-bold text-blue-500 bg-blue-100 px-3 py-1 rounded-lg hover:bg-blue-200 transition">編輯</button>
-        <button onclick="window._adminDeleteReward('${rw.id}')" class="text-xs font-bold text-red-500 bg-red-100 px-3 py-1 rounded-lg hover:bg-red-200 transition">刪除</button>
+      <div class="flex gap-1 flex-shrink-0">
+        <button onclick="window._adminEditReward('${rw.id}')" class="text-xs font-bold text-blue-500 bg-blue-100 px-2.5 py-1.5 rounded-lg hover:bg-blue-200 transition">編輯</button>
+        <button onclick="window._adminDeleteReward('${rw.id}')" class="text-xs font-bold text-red-500 bg-red-100 px-2.5 py-1.5 rounded-lg hover:bg-red-200 transition">刪除</button>
       </div>
     </div>`;
   });
-  html += `<button onclick="closeModal()" class="w-full mt-4 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">完成</button></div>`;
+  
+  html += `</div>
+    <button onclick="closeModal()" class="w-full mt-3 bg-slate-100 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-200 transition flex-shrink-0">完成</button>
+  </div>`;
   showModal(html);
+
+  // 載入 SortableJS 初始化拖拉功能
+  setTimeout(() => {
+    const list = document.getElementById('adminShopSortList');
+    if(list && typeof Sortable !== 'undefined') {
+      new Sortable(list, {
+        handle: '.drag-handle', // 只允許揸住點點位拖拉
+        animation: 150,         // 加入平滑滑動動畫
+        onEnd: function (evt) {
+          // 抽出嚟再插入新位
+          const draggedItem = adminSelectedUserRewards.splice(evt.oldIndex, 1)[0];
+          adminSelectedUserRewards.splice(evt.newIndex, 0, draggedItem);
+          adminSaveRewardsToDB(false); // 畫面已經自動排好，背後靜靜 Save 就可以，唔會閃爍
+        }
+      });
+    }
+    lucide.createIcons();
+  }, 50);
 }
 
 // -- Admin: 換領券及歷史 --
