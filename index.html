@@ -818,7 +818,7 @@ function openAddWorkout(date) {
       <div class="flex gap-2 overflow-x-auto pb-2 mb-3">`;
       
   // 2. 強制次分類排序
-    const subcatOrder = ['胸','背','腿','肩','臂','腹','器械','一般運動','HIIT','瑜伽','徒手','拉伸','指定組合'];    subcats.sort((a, b) => {
+    const subcatOrder = ['胸','背','腿','肩','臂','腹','一般運動','器械','HIIT','瑜伽','徒手','拉伸','指定組合'];    subcats.sort((a, b) => {
       let idxA = subcatOrder.indexOf(a);
       let idxB = subcatOrder.indexOf(b);
       if(idxA === -1) idxA = 999; // 新自訂嘅分類排最後
@@ -828,8 +828,8 @@ function openAddWorkout(date) {
 
    // 3. 補回次分類專屬顏色
     subcats.forEach(sc => {
-      const subcatColors = { '胸': 'bg-red-100 text-red-700 hover:bg-red-200', '背': 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200', '腿': 'bg-green-100 text-green-700 hover:bg-green-200', '肩': 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200', '臂': 'bg-purple-100 text-purple-700 hover:bg-purple-200', '腹': 'bg-stone-200 text-stone-700 hover:bg-stone-300', '器械': 'bg-orange-100 text-orange-700 hover:bg-orange-200', '一般運動': 'bg-orange-100 text-orange-700 hover:bg-orange-200', 'HIIT': 'bg-pink-100 text-pink-700 hover:bg-pink-200', '瑜伽': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '徒手': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '拉伸': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '指定組合': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' };
-      const selectedStyles = { '胸': 'bg-red-300 text-red-900', '背': 'bg-cyan-300 text-cyan-900', '腿': 'bg-green-300 text-green-900', '肩': 'bg-yellow-300 text-yellow-900', '臂': 'bg-purple-300 text-purple-900', '腹': 'bg-stone-400 text-stone-900', '器械': 'bg-orange-300 text-orange-900', '一般運動': 'bg-orange-300 text-orange-900', 'HIIT': 'bg-pink-300 text-pink-900', '瑜伽': 'bg-indigo-300 text-indigo-900', '徒手': 'bg-indigo-300 text-indigo-900', '拉伸': 'bg-indigo-300 text-indigo-900', '指定組合': 'bg-indigo-300 text-indigo-900' };
+      const subcatColors = { '胸': 'bg-red-100 text-red-700 hover:bg-red-200', '背': 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200', '腿': 'bg-green-100 text-green-700 hover:bg-green-200', '肩': 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200', '臂': 'bg-purple-100 text-purple-700 hover:bg-purple-200', '腹': 'bg-stone-200 text-stone-700 hover:bg-stone-300', '一般運動': 'bg-orange-100 text-orange-700 hover:bg-orange-200', '器械': 'bg-orange-100 text-orange-700 hover:bg-orange-200', 'HIIT': 'bg-pink-100 text-pink-700 hover:bg-pink-200', '瑜伽': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '徒手': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '拉伸': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200', '指定組合': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' };
+      const selectedStyles = { '胸': 'bg-red-300 text-red-900', '背': 'bg-cyan-300 text-cyan-900', '腿': 'bg-green-300 text-green-900', '肩': 'bg-yellow-300 text-yellow-900', '臂': 'bg-purple-300 text-purple-900', '腹': 'bg-stone-400 text-stone-900', '一般運動': 'bg-orange-300 text-orange-900', '器械': 'bg-orange-300 text-orange-900', 'HIIT': 'bg-pink-300 text-pink-900', '瑜伽': 'bg-indigo-300 text-indigo-900', '徒手': 'bg-indigo-300 text-indigo-900', '拉伸': 'bg-indigo-300 text-indigo-900', '指定組合': 'bg-indigo-300 text-indigo-900' };
       const sStyle = selectedStyles[sc] || 'bg-slate-400 text-white'; // 搵唔到顏色就用灰色
       const cColor = subcatColors[sc] || 'bg-slate-100 text-slate-700 hover:bg-slate-200';
       
