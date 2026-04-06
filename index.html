@@ -467,26 +467,41 @@ let calHtml = `<div class="flex items-center justify-between mb-3">
     // Get category tags with colors
     let allTags = [];
     if(dayWorkouts.length > 0) {
-      const cats = [...new Set(dayWorkouts.map(w=>w.category))];
-      cats.forEach(cat => {
-        if(cat === 'strength') {
-const subcats = [...new Set(dayWorkouts.filter(w=>w.category==='strength').map(w=>{
-            const ex = w.exercise;
-            for(const [sc, items] of Object.entries(exerciseData.strength.subcats)) {
-              if(items.includes(ex)) return sc;
-            }
-            return '';
-          }).filter(Boolean))];
-          
-          subcats.forEach(sc => {
-            const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '臂': 'bg-purple-100 text-purple-700', '腹': 'bg-stone-200 text-stone-700' };
-            allTags.push(`<span class="text-[10px] font-bold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-0.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">${sc}</span>`);
-          });
+      const tagSet = new Set();
+      dayWorkouts.forEach(w => {
+        let label = '';
+        let colorClass = '';
+        
+        // 判斷運動所屬分類及顏色
+        if(w.category === 'strength') {
+          for(const [sc, items] of Object.entries(exerciseData.strength.subcats)) {
+            if(items.includes(w.exercise)) { label = sc; break; }
+          }
+          const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '臂': 'bg-purple-100 text-purple-700', '腹': 'bg-stone-200 text-stone-700' };
+          colorClass = subcatColors[label] || 'bg-blue-100 text-blue-700';
         } else {
-
           const labels = { cardio: '有氧', hiit: 'HIIT', functional: '功能性' };
           const colors = { cardio: 'bg-orange-100 text-orange-700', hiit: 'bg-pink-100 text-pink-700', functional: 'bg-indigo-100 text-indigo-700' };
-          allTags.push(`<span class="text-[10px] font-bold ${colors[cat]||'bg-slate-100 text-slate-700'} px-0.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">${labels[cat]||cat}</span>`);
+          label = labels[w.category] || w.category;
+          colorClass = colors[w.category] || 'bg-slate-100 text-slate-700';
+        }
+
+        if(label) {
+          const isPlanned = w.status === 'planned';
+          const uniqueKey = label + (isPlanned ? '_planned' : ''); // 區分計劃同完成
+          
+          if(!tagSet.has(uniqueKey)) {
+            tagSet.add(uniqueKey);
+            
+            if (isPlanned) {
+              // 📝 計劃中：抽取文字顏色，轉做透明底 + 虛線框
+              const textColor = colorClass.split(' ').find(c => c.startsWith('text-')) || 'text-slate-500';
+              allTags.push(`<span class="text-[10px] font-bold ${textColor} bg-transparent border border-dashed border-current px-1 rounded-full whitespace-nowrap flex-shrink-0 opacity-80" style="padding-top: 1px; padding-bottom: 1px;">${label}</span>`);
+            } else {
+              // ✅ 已完成：原本嘅實色標籤
+              allTags.push(`<span class="text-[10px] font-bold ${colorClass} px-1 rounded-full whitespace-nowrap flex-shrink-0" style="padding-top: 2px; padding-bottom: 2px;">${label}</span>`);
+            }
+          }
         }
       });
     }
