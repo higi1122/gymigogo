@@ -493,11 +493,11 @@ let calHtml = `<div class="flex items-center justify-between mb-3">
           if(!tagSet.has(uniqueKey)) {
             tagSet.add(uniqueKey);
             
-            if (isPlanned) {
-              // 📝 計劃中：用返原本底色 + 虛線框 (稍微加少少透明度區分)
-              allTags.push(`<span class="text-[10px] font-bold ${colorClass} border border-dashed border-current px-1 rounded-full whitespace-nowrap flex-shrink-0 opacity-70" style="padding-top: 1px; padding-bottom: 1px;">${label}</span>`);
+           if (isPlanned) {
+              // 📝 計劃中：扣減 1px 左右 padding (px-[3px]) 抵消邊框，達成「內框」效果
+              allTags.push(`<span class="text-[10px] font-bold ${colorClass} border border-dashed border-current px-[3px] rounded-full whitespace-nowrap flex-shrink-0 opacity-80" style="padding-top: 1px; padding-bottom: 1px;">${label}</span>`);
             } else {
-              // ✅ 已完成：原本嘅實色標籤
+              // ✅ 已完成：還原最 Slim 嘅原本實色標籤 (無邊框)
               allTags.push(`<span class="text-[10px] font-bold ${colorClass} px-1 rounded-full whitespace-nowrap flex-shrink-0" style="padding-top: 2px; padding-bottom: 2px;">${label}</span>`);
             }
           }
