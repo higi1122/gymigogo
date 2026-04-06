@@ -191,15 +191,32 @@ let globalRewardsData = null;
 function calcPoints(rec) {
   if(rec.record_type !== 'workout') return 0;
   const cat = rec.category;
-  if(cat === 'strength') return Math.max(3, Math.round((rec.weight||0) * (rec.reps||0) * (rec.sets||1) / 250));
-  if(cat === 'cardio') return Math.max(5, Math.round(parseDurationMin(rec.duration) * 0.7));
-  if(cat === 'hiit') return Math.max(5, Math.round(parseDurationMin(rec.duration) * 1));
-if(cat === 'functional') {
-    if (rec.duration) return Math.max(5, Math.round(parseFloat(rec.duration) * 0.7));
-    return Math.max(5, Math.round((rec.sets||1) * (rec.reps||1) * 0.5));
+  
+  if(cat === 'strength') {
+    let pts = Math.round((rec.weight||0) * (rec.reps||0) * (rec.sets||1) / 200);
+    return Math.min(7, Math.max(2, pts));
   }
-  return 5;
+  
+  if(cat === 'cardio') {
+    let pts = Math.round(parseDurationMin(rec.duration) * 0.6);
+    return Math.min(30, Math.max(5, pts)); 
+  }
+  
+  if(cat === 'hiit') {
+    let pts = Math.round(parseDurationMin(rec.duration) * 1);
+    return Math.min(30, Math.max(5, pts));
+  }
+  
+  if(cat === 'functional') {
+    let pts = 0;
+    if (rec.duration) pts = Math.round(parseFloat(rec.duration) * 0.6);
+    else pts = Math.round((rec.sets||1) * (rec.reps||1) * 0.5);
+    return Math.min(30, Math.max(5, pts));
+  }
+  
+  return 3; // 預設保底分數
 }
+
 function parseDurationMin(d) {
   if(!d) return 0;
   const p = d.split(':');
@@ -687,7 +704,10 @@ function showWorkoutMenu(e, backendId) {
     <h3 class="font-bold text-lg text-primary mb-4 text-center">${rec.exercise}</h3>
     <div class="space-y-2">
       <button onclick="copyWorkout('${backendId}')" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
-        <i data-lucide="copy" class="w-5 h-5"></i> 複製
+        <i data-lucide="copy" class="w-5 h-5"></i> 複製此記錄
+      </button>
+      <button onclick="copyDayWorkouts('${rec.date}')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
+        <i data-lucide="copy-check" class="w-5 h-5"></i> 複製全日記錄
       </button>
       <button onclick="deleteRecord('${backendId}')" class="w-full bg-red-50 hover:bg-red-100 text-red-500 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
         <i data-lucide="trash-2" class="w-5 h-5"></i> 刪除
@@ -702,10 +722,21 @@ function copyWorkout(backendId) {
   const rec = allRecords.find(r => r.__backendId === backendId);
   if(!rec) return;
   
-  clipboardWorkout = rec;
+  clipboardWorkout = [rec]; // 變成陣列儲存
   clipboardMode = true;
   closeModal();
   showToast('已複製！按日曆日子粘貼', 'success');
+  renderCalendar();
+}
+
+function copyDayWorkouts(dateStr) {
+  const dayRecs = allRecords.filter(r => r.record_type === 'workout' && r.date === dateStr);
+  if(dayRecs.length === 0) return;
+  
+  clipboardWorkout = dayRecs; // 將嗰日所有記錄變成陣列儲存
+  clipboardMode = true;
+  closeModal();
+  showToast(`已複製 ${dayRecs.length} 筆記錄！按日子粘貼`, 'success');
   renderCalendar();
 }
 
@@ -717,50 +748,55 @@ function cancelClipboard() {
 }
 
 async function pasteWorkout(dateStr) {
-  if(!clipboardWorkout) return;
+  if(!clipboardWorkout || clipboardWorkout.length === 0) return;
   
   const btn = document.querySelector('button:hover') || document.body;
   if(btn) btn.style.opacity = '0.7';
 
-  if(allRecords.filter(r=>r.record_type==='workout').length >= 999) {
-    showToast('已達記錄上限 (999)！', 'error');
+  const currentCount = allRecords.filter(r=>r.record_type==='workout').length;
+  if(currentCount + clipboardWorkout.length >= 9999) {
+    showToast('已達記錄上限 (9999)！', 'error');
     if(btn) btn.style.opacity = '1';
     return;
   }
 
-  // Create new record without backend ID
-  const newRec = {
-    record_type: 'workout',
-    date: dateStr,
-    category: clipboardWorkout.category,
-    exercise: clipboardWorkout.exercise,
-    weight: clipboardWorkout.weight || 0,
-    reps: clipboardWorkout.reps || 0,
-    sets: clipboardWorkout.sets || 1,
-    duration: clipboardWorkout.duration || '',
-    distance: clipboardWorkout.distance || 0,
-    level: clipboardWorkout.level || 0,
-    notes: clipboardWorkout.notes || '',
-    points: clipboardWorkout.points || 0,
-    reward_id: '',
-    used: false,
-redeemed_at: '',
-    user_name: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : '',
-    font_size: 0
-  };
+  try {
+    // 將所有要 Copy 嘅記錄準備成 Promise Array
+    const promises = clipboardWorkout.map(srcRec => {
+      const newRec = {
+        record_type: 'workout',
+        date: dateStr,
+        category: srcRec.category,
+        exercise: srcRec.exercise,
+        weight: srcRec.weight || 0,
+        reps: srcRec.reps || 0,
+        sets: srcRec.sets || 1,
+        duration: srcRec.duration || '',
+        distance: srcRec.distance || 0,
+        level: srcRec.level || 0,
+        notes: srcRec.notes || '',
+        points: srcRec.points || 0,
+        reward_id: '', used: false, redeemed_at: '',
+        user_name: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : '',
+        font_size: 0
+      };
+      // 加入 Firebase 寫入隊列
+      return db.collection("users").doc(currentUser.uid).collection("records").add(newRec);
+    });
 
-await db.collection("users").doc(currentUser.uid).collection("records").add(newRec);
-const result = { isOk: true }; 
-  if(btn) btn.style.opacity = '1';
-  
-  if(result.isOk) {
-    showToast(`已粘貼到 ${dateStr}！`, 'success');
+    // 執行批量寫入 (併發處理，速度極快)
+    await Promise.all(promises);
+    
+    if(btn) btn.style.opacity = '1';
+    showToast(`成功粘貼 ${clipboardWorkout.length} 筆記錄！`, 'success');
     clipboardMode = false;
     clipboardWorkout = null;
     selectedDate = dateStr;
     renderCalendar();
-  } else {
-    showToast('粘貼失敗，請重試', 'error');
+  } catch (e) {
+    console.error(e);
+    showToast('粘貼失敗，請檢查網絡', 'error');
+    if(btn) btn.style.opacity = '1';
   }
 }
 
