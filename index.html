@@ -192,7 +192,7 @@ function calcPoints(rec) {
   if(rec.record_type !== 'workout') return 0;
   const cat = rec.category;
   if(cat === 'strength') return Math.max(3, Math.round((rec.weight||0) * (rec.reps||0) * (rec.sets||1) / 250));
-  if(cat === 'cardio') return Math.max(5, Math.round(parseDurationMin(rec.duration) * 0.6));
+  if(cat === 'cardio') return Math.max(5, Math.round(parseDurationMin(rec.duration) * 0.7));
   if(cat === 'hiit') return Math.max(5, Math.round(parseDurationMin(rec.duration) * 1));
 if(cat === 'functional') {
     if (rec.duration) return Math.max(5, Math.round(parseFloat(rec.duration) * 0.7));
@@ -466,7 +466,7 @@ const subcats = [...new Set(dayWorkouts.filter(w=>w.category==='strength').map(w
             allTags.push(`<span class="text-[10px] font-bold ${subcatColors[sc]||'bg-blue-100 text-blue-700'} px-0.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">${sc}</span>`);
           });
         } else {
-          
+
           const labels = { cardio: '有氧', hiit: 'HIIT', functional: '功能性' };
           const colors = { cardio: 'bg-orange-100 text-orange-700', hiit: 'bg-pink-100 text-pink-700', functional: 'bg-indigo-100 text-indigo-700' };
           allTags.push(`<span class="text-[10px] font-bold ${colors[cat]||'bg-slate-100 text-slate-700'} px-0.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">${labels[cat]||cat}</span>`);
@@ -688,6 +688,9 @@ function showWorkoutMenu(e, backendId) {
     <div class="space-y-2">
       <button onclick="copyWorkout('${backendId}')" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
         <i data-lucide="copy" class="w-5 h-5"></i> 複製
+      </button>
+      <button onclick="deleteRecord('${backendId}')" class="w-full bg-red-50 hover:bg-red-100 text-red-500 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
+        <i data-lucide="trash-2" class="w-5 h-5"></i> 刪除
       </button>
       <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
     </div>
@@ -1403,14 +1406,14 @@ function editRecord(backendId) {
     html += inputField('edit_weight', '重量 (kg)', 'number', rec.weight, '');
     html += inputField('edit_reps', '次數', 'number', rec.reps, '');
     html += inputField('edit_sets', '組數', 'number', rec.sets, '');
-  } else if(rec.category === 'cardio') {
-    html += inputField('edit_duration', '時間 (分鐘)', 'number', editDur, '');
+} else if(rec.category === 'cardio') {
+    html += inputField('edit_duration', '時間 (分鐘)', 'number', rec.duration, '');
     html += inputField('edit_distance', '距離 (km)', 'number', rec.distance, '');
     html += inputField('edit_level', '阻力等級', 'number', rec.level, '');
     html += inputField('edit_notes', '備註', 'text', rec.notes, '');
     html += inputField('edit_link', '連結', 'text', rec.link||'', '');
   } else if(rec.category === 'hiit') {
-    html += inputField('edit_duration', '時間 (分鐘)', 'number', editDur, '');
+    html += inputField('edit_duration', '時間 (分鐘)', 'number', rec.duration, '');
     html += inputField('edit_notes', '備註', 'text', rec.notes||'', '');
     html += inputField('edit_link', '連結', 'text', rec.link||'', '');
 } else {
