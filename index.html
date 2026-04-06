@@ -3,6 +3,10 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta name="apple-mobile-web-app-title" content="Gymigogo">
+
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -443,13 +447,17 @@ function renderCalendar() {
   const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
   const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 
-let calHtml = `<div class="flex items-center justify-between mb-3">
-    <div class="flex gap-2">
-      <button onclick="prevMonth()" class="p-2 rounded-xl bg-white shadow-sm hover:bg-sky2 transition"><i data-lucide="chevron-left" class="w-5 h-5 text-primary"></i></button>
-      <button onclick="goToToday()" class="px-3 py-1 rounded-xl bg-white shadow-sm hover:bg-sky2 transition text-primary font-bold text-sm">今日</button>
+let calHtml = `<div class="relative flex items-center justify-center mb-3 min-h-[40px]">
+    <div class="absolute left-0 flex gap-2">
+      <button onclick="prevMonth()" class="p-2 rounded-xl bg-white shadow-sm hover:bg-sky2 transition flex items-center justify-center"><i data-lucide="chevron-left" class="w-5 h-5 text-primary"></i></button>
+      <button onclick="goToToday()" class="px-3 py-1 rounded-xl bg-white shadow-sm hover:bg-sky2 transition text-primary font-bold text-sm flex items-center justify-center">今日</button>
     </div>
-    <h2 class="font-extrabold text-lg text-primary">${calYear}年 ${monthNames[calMonth]}</h2>
-    <button onclick="nextMonth()" class="p-2 rounded-xl bg-white shadow-sm hover:bg-sky2 transition"><i data-lucide="chevron-right" class="w-5 h-5 text-primary"></i></button>
+    <button onclick="window.openMonthPicker()" class="font-extrabold text-lg text-primary hover:bg-white/60 active:bg-white/80 px-3 py-1.5 rounded-xl transition flex items-center gap-1 z-10">
+      ${calYear}年 ${monthNames[calMonth]} <i data-lucide="chevron-down" class="w-4 h-4 opacity-50"></i>
+    </button>
+    <div class="absolute right-0 flex items-center justify-center">
+      <button onclick="nextMonth()" class="p-2 rounded-xl bg-white shadow-sm hover:bg-sky2 transition flex items-center justify-center"><i data-lucide="chevron-right" class="w-5 h-5 text-primary"></i></button>
+    </div>
   </div>`;
 
   calHtml += '<div class="grid grid-cols-7 gap-1 mb-1 text-center">';
@@ -656,6 +664,33 @@ function goToToday() {
   selectedDate = toDateStr(d); // 自動揀埋今日，顯示今日嘅詳情
   renderCalendar();
 }
+
+// 新增：選擇月份彈出視窗
+window.openMonthPicker = () => {
+  let html = `<div class="modal-box" onclick="event.stopPropagation()">
+    <h3 class="font-extrabold text-lg text-primary mb-4">📅 選擇年月</h3>
+    <div class="flex gap-2 mb-4">
+      <select id="jumpYear" class="flex-1 border-2 border-sky2 rounded-xl px-2 py-3 font-extrabold text-primary focus:border-primary focus:outline-none text-center bg-white">
+        ${[...Array(11)].map((_,i) => `<option value="${calYear - 5 + i}" ${i===5?'selected':''}>${calYear - 5 + i} 年</option>`).join('')}
+      </select>
+      <select id="jumpMonth" class="flex-1 border-2 border-sky2 rounded-xl px-2 py-3 font-extrabold text-primary focus:border-primary focus:outline-none text-center bg-white">
+        ${[...Array(12)].map((_,i) => `<option value="${i}" ${i===calMonth?'selected':''}>${i+1} 月</option>`).join('')}
+      </select>
+    </div>
+    <button onclick="confirmMonthJump()" class="w-full bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition mb-2">確定跳轉</button>
+    <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`;
+  showModal(html);
+  lucide.createIcons();
+};
+
+window.confirmMonthJump = () => {
+  calYear = parseInt(document.getElementById('jumpYear').value);
+  calMonth = parseInt(document.getElementById('jumpMonth').value);
+  selectedDate = null;
+  closeModal();
+  renderCalendar();
+};
 
 function selectDate(d) { 
   if(clipboardMode && clipboardWorkout) {
@@ -1520,10 +1555,16 @@ function editRecord(backendId) {
     html += inputField('edit_sets', '組數', 'number', rec.sets, '');
 } else if(rec.category === 'cardio') {
     html += inputField('edit_duration', '時間 (分鐘)', 'number', rec.duration, '');
-    html += inputField('edit_distance', '距離 (km)', 'number', rec.distance, '');
-    html += inputField('edit_level', '阻力等級', 'number', rec.level, '');
-    html += inputField('edit_notes', '備註', 'text', rec.notes, '');
-    html += inputField('edit_link', '連結', 'text', rec.link||'', '');
+    
+    // 智能判斷：如果係一般運動（例如羽毛球），就隱藏距離同阻力
+    const isOutdoor = exerciseData.cardio.subcats['一般運動']?.includes(rec.exercise);
+    if(!isOutdoor) {
+      html += inputField('edit_distance', '距離 (km)', 'number', rec.distance, '');
+      html += inputField('edit_level', '阻力等級', 'number', rec.level, '');
+    }
+    
+    html += inputField('edit_notes', '備註', 'text', rec.notes||'', '');
+    // (有氧運動預設不需要影片連結，所以刪除 edit_link)
   } else if(rec.category === 'hiit') {
     html += inputField('edit_duration', '時間 (分鐘)', 'number', rec.duration, '');
     html += inputField('edit_notes', '備註', 'text', rec.notes||'', '');
@@ -1544,8 +1585,8 @@ function editRecord(backendId) {
   
   if (rec.status === 'completed') {
     footerBtns = `<div class="flex gap-2 mt-4">
-      <button onclick="window.revertToPlanned('${backendId}')" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-3 rounded-xl transition text-xs">還原為計劃 📝</button>
-      <button id="saveEditBtn" onclick="saveEdit('${backendId}')" class="flex-1 bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition text-xs">儲存修改 ✅</button>
+      <button onclick="window.revertToPlanned('${backendId}')" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-3 rounded-xl transition">還原為計劃 📝</button>
+      <button id="saveEditBtn" onclick="saveEdit('${backendId}')" class="flex-1 bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition">儲存修改 ✅</button>
     </div>`;
   }
 
