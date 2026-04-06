@@ -636,7 +636,7 @@ const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 tex
                   : `<span class="text-xs font-bold text-warm3 bg-warm1 px-2 py-0.5 rounded-full whitespace-nowrap">+${w.points}⭐</span>`
                 }
               </div>
-              ${w.status === 'planned'
+              ${(w.status === 'planned' && selectedDate <= toDateStr(new Date()))
                 ? `<button onclick="event.stopPropagation(); window.markAsCompleted('${w.__backendId}')" class="bg-green-500 hover:bg-green-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1 mt-1"><i data-lucide="check-circle" class="w-3 h-3"></i> 完成</button>`
                 : ''
               }
@@ -824,6 +824,9 @@ async function pasteWorkout(dateStr) {
 
   try {
     // 將所有要 Copy 嘅記錄準備成 Promise Array
+    const todayStr = toDateStr(new Date());
+    const isFuture = dateStr > todayStr;
+    
     const promises = clipboardWorkout.map(srcRec => {
       const newRec = {
         record_type: 'workout',
@@ -840,7 +843,7 @@ async function pasteWorkout(dateStr) {
         points: srcRec.points || 0,
         reward_id: '', used: false, redeemed_at: '',
         user_name: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : '',
-        font_size: 0, status: srcRec.status || 'completed' // 👈 保留計劃狀態
+        font_size: 0, status: isFuture ? 'planned' : (srcRec.status || 'completed') // 👈 貼去未來日子強制轉做計劃
       };
       // 加入 Firebase 寫入隊列
       return db.collection("users").doc(currentUser.uid).collection("records").add(newRec);
@@ -1001,8 +1004,18 @@ if(isExEditMode) {
         html += inputField('link', '連結 (如 YouTube)', 'text', '', 'https://...');
         html += inputField('notes', '備註', 'text', '', '');
       }
-      html += `</div>
-        <div class="flex gap-2 mt-4">
+      html += `</div>`;
+      
+      // 智能判斷：如果選擇嘅日子大過今日，強制只能儲存為計劃
+      const todayStr = toDateStr(new Date());
+      if (date > todayStr) {
+        html += `<div class="mt-4">
+          <button onclick="submitWorkout('${date}','${selCat}','${selExercise.replace(/'/g,"\\'")}','planned')" id="planWorkoutBtn" class="w-full bg-sky2 hover:bg-sky3 text-primary font-bold py-3 rounded-xl transition flex justify-center items-center gap-1">
+            📝 儲存為未來計劃
+          </button>
+        </div>`;
+      } else {
+        html += `<div class="flex gap-2 mt-4">
           <button onclick="submitWorkout('${date}','${selCat}','${selExercise.replace(/'/g,"\\'")}','planned')" id="planWorkoutBtn" class="flex-1 bg-sky2 hover:bg-sky3 text-primary font-bold py-3 rounded-xl transition flex justify-center items-center gap-1">
             📝 儲存計劃
           </button>
@@ -1010,6 +1023,7 @@ if(isExEditMode) {
             ✅ 完成記錄
           </button>
         </div>`;
+      }
     }
 
 html += `<button onclick="closeModal()" class="w-full mt-2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button></div>`;
