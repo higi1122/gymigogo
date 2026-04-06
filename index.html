@@ -494,9 +494,8 @@ let calHtml = `<div class="flex items-center justify-between mb-3">
             tagSet.add(uniqueKey);
             
             if (isPlanned) {
-              // 📝 計劃中：抽取文字顏色，轉做透明底 + 虛線框
-              const textColor = colorClass.split(' ').find(c => c.startsWith('text-')) || 'text-slate-500';
-              allTags.push(`<span class="text-[10px] font-bold ${textColor} bg-transparent border border-dashed border-current px-1 rounded-full whitespace-nowrap flex-shrink-0 opacity-80" style="padding-top: 1px; padding-bottom: 1px;">${label}</span>`);
+              // 📝 計劃中：用返原本底色 + 虛線框 (稍微加少少透明度區分)
+              allTags.push(`<span class="text-[10px] font-bold ${colorClass} border border-dashed border-current px-1 rounded-full whitespace-nowrap flex-shrink-0 opacity-70" style="padding-top: 1px; padding-bottom: 1px;">${label}</span>`);
             } else {
               // ✅ 已完成：原本嘅實色標籤
               allTags.push(`<span class="text-[10px] font-bold ${colorClass} px-1 rounded-full whitespace-nowrap flex-shrink-0" style="padding-top: 2px; padding-bottom: 2px;">${label}</span>`);
