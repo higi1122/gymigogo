@@ -452,8 +452,8 @@ let calHtml = `<div class="relative flex items-center justify-center mb-3 min-h-
       <button onclick="prevMonth()" class="p-2 rounded-xl bg-white shadow-sm hover:bg-sky2 transition flex items-center justify-center"><i data-lucide="chevron-left" class="w-5 h-5 text-primary"></i></button>
       <button onclick="goToToday()" class="px-3 py-1 rounded-xl bg-white shadow-sm hover:bg-sky2 transition text-primary font-bold text-sm flex items-center justify-center">今日</button>
     </div>
-    <button onclick="window.openMonthPicker()" class="font-extrabold text-lg text-primary hover:bg-white/60 active:bg-white/80 px-3 py-1.5 rounded-xl transition flex items-center gap-1 z-10">
-      ${calYear}年 ${monthNames[calMonth]} <i data-lucide="chevron-down" class="w-4 h-4 opacity-50"></i>
+    <button onclick="window.openMonthPicker()" class="font-extrabold text-lg text-primary hover:bg-white/60 active:bg-white/80 px-3 py-1.5 rounded-xl transition flex items-center z-10">
+      ${calYear}年 ${monthNames[calMonth]}
     </button>
     <div class="absolute right-0 flex items-center justify-center">
       <button onclick="nextMonth()" class="p-2 rounded-xl bg-white shadow-sm hover:bg-sky2 transition flex items-center justify-center"><i data-lucide="chevron-right" class="w-5 h-5 text-primary"></i></button>
