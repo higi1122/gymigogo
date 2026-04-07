@@ -62,19 +62,31 @@ tailwind.config = {
  <body class="h-full bg-sky1">
   <div id="app" class="h-full w-full flex flex-col overflow-hidden" style="display:none;">
    <!-- Header -->
-   <header id="appHeader" class="bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0">
+<header id="appHeader" class="bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0">
     <div class="flex items-center gap-2">
      <span class="text-2xl">🏋️</span> <span id="headerTitle" class="font-extrabold text-primary text-lg">Gymigogo</span>
     </div>
     <div class="flex items-center gap-2">
+     <button onclick="switchPage('friends')" class="relative p-1.5 rounded-full bg-sky1 text-primary hover:bg-sky2 transition flex items-center justify-center">
+       <i data-lucide="users" class="w-5 h-5"></i>
+       <span id="friendNotif" class="absolute -top-1 -right-1 flex h-3 w-3 hidden">
+         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+         <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+       </span>
+     </button>
      <span id="pointsBadge" class="bg-warm2 text-warm3 font-bold text-sm px-3 py-1 rounded-full flex items-center gap-1">⭐ <span id="totalPoints">0</span></span> <span id="userBadge" class="bg-sky2 text-primary font-semibold text-sm px-3 py-1 rounded-full truncate max-w-[100px]"></span>
     </div>
-   </header><!-- Pages -->
+   </header>
+   <!-- Pages -->
    <main id="mainContent" class="flex-1 overflow-y-auto overflow-x-hidden">
-    <!-- Page 1: Calendar -->
-    <div id="page-calendar" class="page-slide p-4 pb-24 hidden"></div><!-- Page 2: Shop -->
-    <div id="page-shop" class="page-slide p-4 pb-24 hidden"></div><!-- Page 3: History -->
-    <div id="page-history" class="page-slide p-4 pb-24 hidden"></div><!-- Page 4: Settings -->
+     <div id="page-friends" class="page-slide p-4 pb-24 hidden"></div>
+         <!-- Page 1: Calendar -->
+    <div id="page-calendar" class="page-slide p-4 pb-24 hidden"></div>
+    <!-- Page 2: Shop -->
+    <div id="page-shop" class="page-slide p-4 pb-24 hidden"></div>
+    <!-- Page 3: History -->
+    <div id="page-history" class="page-slide p-4 pb-24 hidden"></div>
+    <!-- Page 4: Settings -->
 <div id="page-settings" class="page-slide p-4 pb-24 hidden"></div>
     <div id="page-admin" class="page-slide p-4 pb-24 hidden"></div>
    </main><!-- Bottom Nav -->
@@ -352,6 +364,36 @@ auth.onAuthStateChanged(async user => {
         if(currentPage !== 'admin') renderCurrentPage();
       });
 
+    // --- 新增：實時載入好友、邀請及挑戰數據 ---
+    const updateNotif = () => {
+      const notif = document.getElementById('friendNotif');
+      if(notif) {
+        const count = (window.myRequests?.length || 0) + (window.myChallenges?.length || 0);
+        if(count > 0) notif.classList.remove('hidden');
+        else notif.classList.add('hidden');
+      }
+    };
+
+    if(window.friendsUnsubscribe) window.friendsUnsubscribe();
+    window.friendsUnsubscribe = db.collection("users").doc(user.uid).collection("friends").onSnapshot(snap => {
+      window.myFriends = snap.docs.map(d => ({uid: d.id, ...d.data()}));
+      if(currentPage === 'friends') renderFriends();
+    });
+
+    if(window.reqsUnsubscribe) window.reqsUnsubscribe();
+    window.reqsUnsubscribe = db.collection("users").doc(user.uid).collection("friend_requests").onSnapshot(snap => {
+      window.myRequests = snap.docs.map(d => ({uid: d.id, ...d.data()}));
+      updateNotif(); // 有新邀請就閃紅點
+      if(currentPage === 'friends') renderFriends();
+    });
+
+    if(window.chalUnsubscribe) window.chalUnsubscribe();
+    window.chalUnsubscribe = db.collection("users").doc(user.uid).collection("challenges").orderBy("timestamp", "desc").onSnapshot(snap => {
+      window.myChallenges = snap.docs.map(d => ({id: d.id, ...d.data()}));
+      updateNotif(); // 有新挑戰就閃紅點
+      if(currentPage === 'friends') renderFriends();
+    });
+
     switchPage('calendar');
     lucide.createIcons();
 } else {
@@ -375,7 +417,7 @@ auth.onAuthStateChanged(async user => {
 function switchPage(page) {
   currentPage = page;
   
-  const pages = ['calendar','shop','history','settings', 'admin'];
+  const pages = ['calendar','shop','history','friends','settings', 'admin'];
   pages.forEach(p => {
     // 1. 處理頁面顯示/隱藏
     const pageEl = document.getElementById('page-'+p);
@@ -409,8 +451,9 @@ function renderCurrentPage() {
   if(currentPage === 'calendar') renderCalendar();
   else if(currentPage === 'shop') renderShop();
   else if(currentPage === 'history') renderHistory();
+  else if(currentPage === 'friends') renderFriends(); 
   else if(currentPage === 'settings') renderSettings();
-  else if(currentPage === 'admin') renderAdmin(); // 👈 補上這這一行
+  else if(currentPage === 'admin') renderAdmin();
 }
 
 // ========== TOAST ==========
@@ -2165,6 +2208,235 @@ window._adminResetGlobalDefaults = async () => {
     console.error(e); 
     showToast('還原失敗，請檢查權限', 'error'); 
   }
+};
+
+// ==========================================
+// ========== 🤝 好友及挑戰系統 ==========
+// ==========================================
+window.myFriends = window.myFriends || [];
+window.myRequests = window.myRequests || [];
+window.myChallenges = window.myChallenges || [];
+
+function renderFriends() {
+  const el = document.getElementById('page-friends');
+  let html = `<h2 class="font-extrabold text-xl text-primary mb-4">🤝 健身好友</h2>`;
+
+  // 1. 收到的挑戰 (Challenges)
+  if (window.myChallenges.length > 0) {
+     html += `<div class="bg-gradient-to-r from-orange-400 to-orange-500 rounded-2xl p-4 mb-4 shadow-sm text-white card-enter">
+       <h3 class="font-bold text-sm mb-3 flex items-center gap-1"><i data-lucide="flame" class="w-5 h-5"></i> 收到的挑戰 (${window.myChallenges.length})</h3>
+       <div class="space-y-2 max-h-48 overflow-y-auto pr-1">`;
+     window.myChallenges.forEach(c => {
+        html += `<div class="bg-white/20 p-3 rounded-xl relative shadow-sm">
+          <button onclick="deleteChallenge('${c.id}')" class="absolute top-2 right-2 text-white/60 hover:text-white transition"><i data-lucide="x" class="w-4 h-4"></i></button>
+          <div class="font-bold text-xs mb-1 opacity-90">${c.fromName} 向你發起挑戰：</div>
+          <div class="text-sm font-extrabold leading-tight">${c.message}</div>
+          <div class="text-[10px] opacity-70 mt-2">${new Date(c.timestamp).toLocaleString('zh-HK')}</div>
+        </div>`;
+     });
+     html += `</div></div>`;
+  }
+
+  // 2. 好友邀請 (Requests)
+  if (window.myRequests.length > 0) {
+     html += `<div class="bg-yellow-50 rounded-2xl p-4 mb-4 shadow-sm border border-yellow-200 card-enter">
+       <h3 class="font-bold text-sm text-yellow-700 mb-3 flex items-center gap-1"><i data-lucide="bell" class="w-4 h-4"></i> 新好友邀請</h3>`;
+     window.myRequests.forEach(req => {
+        html += `<div class="flex items-center justify-between bg-white p-3 rounded-xl shadow-sm mb-2">
+          <div class="font-bold text-sm text-slate-700">${req.displayName || req.email}</div>
+          <div class="flex gap-2">
+            <button onclick="acceptFriend('${req.uid}', '${req.displayName||req.email}')" class="bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition">接受</button>
+            <button onclick="rejectFriend('${req.uid}')" class="bg-slate-200 hover:bg-slate-300 text-slate-600 text-xs font-bold px-3 py-2 rounded-lg transition">拒絕</button>
+          </div>
+        </div>`;
+     });
+     html += `</div>`;
+  }
+
+  // 3. 搜尋新朋友
+  html += `<div class="bg-white rounded-2xl shadow-sm p-4 mb-4 card-enter">
+    <h3 class="font-bold text-sm text-primary mb-3">🔍 尋找朋友</h3>
+    <div class="flex gap-2">
+      <input id="searchFriendInput" type="text" placeholder="輸入好友帳號 (ID)..." class="flex-1 border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none text-sm font-semibold">
+      <button onclick="searchFriend()" class="bg-primary hover:bg-primaryDk text-white font-bold px-4 py-2 rounded-xl transition shadow-sm">搜尋</button>
+    </div>
+    <div id="searchFriendResult" class="mt-3"></div>
+  </div>`;
+
+  // 4. 我的好友列表
+  html += `<div class="bg-white rounded-2xl shadow-sm p-4 card-enter mb-6">
+    <h3 class="font-bold text-sm text-primary mb-3 flex items-center gap-1"><i data-lucide="users" class="w-4 h-4"></i> 我的好友 (${window.myFriends.length})</h3>`;
+
+  if (window.myFriends.length === 0) {
+     html += `<p class="text-slate-400 text-sm text-center py-6">仲未有朋友，快啲搜尋 ID 加人啦！</p>`;
+  } else {
+     window.myFriends.forEach(f => {
+        html += `<div class="flex items-center justify-between bg-sky1 hover:bg-sky2 transition p-3 rounded-xl mb-2 cursor-pointer shadow-sm" onclick="viewFriendProfile('${f.uid}', '${f.displayName}')">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-extrabold text-lg shadow-inner">${f.displayName.charAt(0).toUpperCase()}</div>
+            <div class="font-bold text-sm text-slate-700">${f.displayName}</div>
+          </div>
+          <i data-lucide="chevron-right" class="w-5 h-5 text-primary opacity-50"></i>
+        </div>`;
+     });
+  }
+  html += `</div>`;
+
+  el.innerHTML = html;
+  lucide.createIcons();
+}
+
+// --- 搜尋及加好友邏輯 ---
+window.searchFriend = async () => {
+  const input = document.getElementById('searchFriendInput').value.trim();
+  const resDiv = document.getElementById('searchFriendResult');
+  if(!input) return;
+
+  const email = input.includes('@') ? input : `${input.toLowerCase()}@gymigogo.com`;
+  if(email === currentUser.email) {
+    resDiv.innerHTML = `<p class="text-red-500 text-xs font-bold bg-red-50 p-2 rounded-lg">呢個係你自己喎！</p>`; return;
+  }
+
+  resDiv.innerHTML = `<p class="text-slate-500 text-xs text-center">搜尋中...</p>`;
+  try {
+    const snap = await db.collection("users").where("email", "==", email).get();
+    if(snap.empty) {
+      resDiv.innerHTML = `<p class="text-red-500 text-xs font-bold bg-red-50 p-2 rounded-lg text-center">找不到此用戶，請檢查帳號。</p>`; return;
+    }
+    const targetUser = snap.docs[0];
+    const tUid = targetUser.id;
+    const tName = targetUser.data().displayId || targetUser.data().email.split('@')[0];
+
+    if(window.myFriends.find(f => f.uid === tUid)) {
+       resDiv.innerHTML = `<div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+         <span class="font-bold text-sm text-slate-700">${tName}</span><span class="text-xs text-slate-400 font-bold">已是好友</span>
+       </div>`; return;
+    }
+
+    resDiv.innerHTML = `<div class="flex items-center justify-between bg-sky-50 p-3 rounded-xl border border-sky-200 shadow-sm">
+      <span class="font-bold text-sm text-primary">${tName}</span>
+      <button onclick="sendFriendReq('${tUid}', '${tName}')" class="bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm hover:bg-primaryDk transition">加為好友</button>
+    </div>`;
+  } catch(e) { resDiv.innerHTML = `<p class="text-red-500 text-xs text-center">搜尋出錯，請重試。</p>`; }
+};
+
+window.sendFriendReq = async (targetUid, targetName) => {
+  try {
+    const myName = currentUser.displayName || currentUser.email.split('@')[0];
+    await db.collection("users").doc(targetUid).collection("friend_requests").doc(currentUser.uid).set({
+      uid: currentUser.uid, email: currentUser.email, displayName: myName, timestamp: new Date().toISOString()
+    });
+    showToast('已發送邀請！', 'success');
+    document.getElementById('searchFriendResult').innerHTML = `<p class="text-green-600 text-xs font-bold bg-green-50 p-2 rounded-lg text-center">邀請已發送給 ${targetName}！</p>`;
+  } catch(e) { showToast('發送失敗', 'error'); }
+};
+
+window.acceptFriend = async (reqUid, reqName) => {
+  try {
+    const myName = currentUser.displayName || currentUser.email.split('@')[0];
+    const now = new Date().toISOString();
+    await db.collection("users").doc(currentUser.uid).collection("friends").doc(reqUid).set({ uid: reqUid, displayName: reqName, addedAt: now });
+    await db.collection("users").doc(reqUid).collection("friends").doc(currentUser.uid).set({ uid: currentUser.uid, displayName: myName, addedAt: now });
+    await db.collection("users").doc(currentUser.uid).collection("friend_requests").doc(reqUid).delete();
+    showToast(`已加 ${reqName} 為好友！`, 'success');
+  } catch(e) { showToast('操作失敗', 'error'); }
+};
+
+window.rejectFriend = async (reqUid) => { await db.collection("users").doc(currentUser.uid).collection("friend_requests").doc(reqUid).delete(); };
+window.deleteChallenge = async (id) => { await db.collection("users").doc(currentUser.uid).collection("challenges").doc(id).delete(); };
+
+// --- 查看好友記錄及發起挑戰 ---
+window.viewFriendProfile = async (fUid, fName) => {
+  showModal(`<div class="modal-box text-center" onclick="event.stopPropagation()">
+    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent mb-2"></div>
+    <h3 class="font-extrabold text-sm text-primary">載入記錄中...</h3>
+  </div>`);
+
+  try {
+    // 1. 先攞晒所有運動記錄出嚟
+    const snap = await db.collection("users").doc(fUid).collection("records")
+      .where("record_type", "==", "workout").get();
+
+    let recs = snap.docs.map(d => d.data());
+    
+    // 2. 智能過濾：剔除「計劃中 (planned)」，剩下嘅（包括舊版無標籤嘅記錄）全部分類為已完成
+    recs = recs.filter(r => r.status !== 'planned');
+    
+    // 3. 排序及限制數量
+    recs.sort((a,b) => (b.timestamp || b.date).localeCompare(a.timestamp || a.date));
+    recs = recs.slice(0, 10); // 顯示最新 10 條
+
+    let html = `<div class="modal-box max-w-md text-left flex flex-col" onclick="event.stopPropagation()" style="max-height:85vh;">
+      <div class="flex items-center justify-between mb-4 flex-shrink-0">
+         <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center font-extrabold text-xl shadow-inner">${fName.charAt(0).toUpperCase()}</div>
+            <div>
+               <h3 class="font-extrabold text-lg text-slate-800">${fName}</h3>
+               <div class="text-xs text-slate-500 font-semibold">最近 10 次運動記錄</div>
+            </div>
+         </div>
+      </div>
+      <div class="overflow-y-auto flex-1 pr-1 mb-4">`;
+
+    if(recs.length === 0) {
+       html += `<div class="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+         <div class="text-4xl mb-2 opacity-50">😴</div>
+         <p class="text-slate-500 text-sm font-bold">佢最近好似偷懶無做運動喎</p>
+         <p class="text-slate-400 text-xs mt-1">快啲挑佢機叫佢郁下啦！</p>
+       </div>`;
+    } else {
+       recs.forEach(r => {
+          html += `<div class="bg-sky-50 rounded-xl p-3 mb-2 border border-sky-100 shadow-sm relative overflow-hidden">
+            <div class="absolute right-0 top-0 bottom-0 w-1 bg-primary opacity-20"></div>
+            <div class="flex justify-between items-center mb-1.5">
+               <div class="font-bold text-sm text-primary flex items-center gap-1">${r.exercise}</div>
+               <div class="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-100">${r.date}</div>
+            </div>
+            <div class="text-xs text-slate-600 font-semibold">${formatWorkoutDetail(r)}</div>
+          </div>`;
+       });
+    }
+
+    html += `</div>
+      <div class="flex flex-col gap-2 flex-shrink-0">
+         <button onclick="openChallengeModal('${fUid}', '${fName}')" class="w-full bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold py-3 rounded-xl shadow-md hover:from-orange-500 hover:to-orange-600 transition flex items-center justify-center gap-1">
+           🔥 發起挑戰 / 留言
+         </button>
+         <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">關閉</button>
+      </div>
+    </div>`;
+    showModal(html);
+    lucide.createIcons();
+  } catch(e) {
+    showModal(`<div class="modal-box" onclick="event.stopPropagation()"><p class="text-red-500 font-bold mb-2">無法讀取記錄</p><p class="text-xs text-slate-500 mb-4">請確定 Firebase 資料庫規則允許互相讀取記錄。</p><button onclick="closeModal()" class="w-full bg-slate-100 font-bold py-2.5 rounded-xl">關閉</button></div>`);
+  }
+};
+
+window.openChallengeModal = (fUid, fName) => {
+   showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+     <div class="text-5xl mb-2 float-anim text-center">🔥</div>
+     <h3 class="font-extrabold text-lg text-orange-500 mb-2 text-center">向 ${fName} 發起挑戰！</h3>
+     <p class="text-xs text-slate-500 mb-4 text-center font-semibold">話俾佢知你做咗咩，挑下佢機！</p>
+     <textarea id="challengeMsg" rows="3" class="w-full border-2 border-orange-200 rounded-xl px-3 py-3 focus:border-orange-500 focus:outline-none text-sm font-semibold mb-4 bg-orange-50/50" placeholder="例如：我今日做咗 30分鐘 HIIT，大汗疊細汗！你今日郁咗未？😎"></textarea>
+     <button onclick="submitChallenge('${fUid}', '${fName}')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition mb-2 shadow-sm">發送挑戰 🚀</button>
+     <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+   </div>`);
+};
+
+window.submitChallenge = async (fUid, fName) => {
+   const msg = document.getElementById('challengeMsg').value.trim();
+   if(!msg) return;
+   const btn = document.querySelector('button:active');
+   if(btn) btn.disabled = true;
+
+   try {
+     const myName = currentUser.displayName || currentUser.email.split('@')[0];
+     await db.collection("users").doc(fUid).collection("challenges").add({
+        fromUid: currentUser.uid, fromName: myName, message: msg, timestamp: new Date().toISOString(), read: false
+     });
+     showToast('挑戰已發送！', 'success');
+     closeModal();
+   } catch(e) { showToast('發送失敗，請重試', 'error'); if(btn) btn.disabled = false; }
 };
 
 lucide.createIcons();
