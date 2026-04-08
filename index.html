@@ -33,6 +33,12 @@ input, select, textarea { font-size: 16px !important; }
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type="number"] { -moz-appearance: textfield; }
+/* 🌟 終極修正：收服 iOS Safari 日期框自動撐闊問題 */
+    input[type="date"] {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      -webkit-appearance: none;
+    }
 .reward-card { background: linear-gradient(135deg, #fef3c7, #fde68a, #fcd34d); border-radius: 16px; }
 .reward-card-locked { background: linear-gradient(135deg, #f1f5f9, #e2e8f0); border-radius: 16px; }
 .voucher-bg { background: linear-gradient(135deg, #dbeafe, #bfdbfe, #93c5fd); }
@@ -1124,9 +1130,9 @@ function inputField(id, label, type, val, ph) {
     </div>`;
   }
   
-  // 如果係普通文字框 (例如備註/連結/日期)，加入 block 同 max-w-full 防止 iOS 撐爆畫面
+  // 如果係普通文字框 (例如備註/連結)，保持原樣
   return `<div><label class="text-xs font-bold text-slate-500 block mb-1">${label}</label>
-    <input id="add_${id}" type="${type}" value="${val}" placeholder="${ph}" class="block w-full max-w-full box-border border-2 border-sky2 rounded-xl px-3 py-3 focus:border-primary focus:outline-none transition font-semibold shadow-sm"></div>`;
+    <input id="add_${id}" type="${type}" value="${val}" placeholder="${ph}" class="w-full border-2 border-sky2 rounded-xl px-3 py-3 focus:border-primary focus:outline-none transition font-semibold shadow-sm"></div>`;
 }
 
 // 處理 +/- 按鈕點擊事件
