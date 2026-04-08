@@ -1124,9 +1124,9 @@ function inputField(id, label, type, val, ph) {
     </div>`;
   }
   
-  // 如果係普通文字框 (例如備註/連結)，保持原樣
+  // 如果係普通文字框 (例如備註/連結/日期)，加入 block 同 max-w-full 防止 iOS 撐爆畫面
   return `<div><label class="text-xs font-bold text-slate-500 block mb-1">${label}</label>
-    <input id="add_${id}" type="${type}" value="${val}" placeholder="${ph}" class="w-full border-2 border-sky2 rounded-xl px-3 py-3 focus:border-primary focus:outline-none transition font-semibold shadow-sm"></div>`;
+    <input id="add_${id}" type="${type}" value="${val}" placeholder="${ph}" class="block w-full max-w-full box-border border-2 border-sky2 rounded-xl px-3 py-3 focus:border-primary focus:outline-none transition font-semibold shadow-sm"></div>`;
 }
 
 // 處理 +/- 按鈕點擊事件
