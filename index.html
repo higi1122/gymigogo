@@ -1602,9 +1602,11 @@ function editRecord(backendId) {
 
   let html = `<div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85%;overflow-y:auto;">
     <h3 class="font-extrabold text-lg text-primary mb-3">✏️ 修改記錄</h3>
-    <p class="text-sm font-bold text-slate-500 mb-3">${rec.exercise} - ${rec.date}</p>
+    <p class="text-sm font-bold text-slate-500 mb-3">${rec.exercise}</p>
     <div class="space-y-3">`;
 
+  // 📅 加入日期修改欄位
+  html += inputField('edit_date', '日期', 'date', rec.date, '');
 
   if(rec.category === 'strength') {
     html += inputField('edit_weight', '重量 (kg)', 'number', rec.weight, '');
@@ -1657,6 +1659,7 @@ function editRecord(backendId) {
   // Set values after render
   setTimeout(() => {
     const setV = (id,v) => { const e=document.getElementById(id); if(e) e.value=v; };
+    setV('add_edit_date', rec.date); // 👈 確保日期欄位成功載入
     setV('add_edit_weight', rec.weight); setV('add_edit_reps', rec.reps); setV('add_edit_sets', rec.sets);
     setV('add_edit_duration', rec.duration); setV('add_edit_distance', rec.distance);
     setV('add_edit_level', rec.level); setV('add_edit_notes', rec.notes); setV('add_edit_link', rec.link);
@@ -1671,11 +1674,19 @@ async function saveEdit(backendId) {
   if(!rec) { closeModal(); return; }
 
   const gv = id => { const e = document.getElementById('add_edit_'+id); return e ? e.value : ''; };
+  
+  // 📅 獲取新日期，並防呆檢查（移去未來自動轉為計劃）
+  const newDate = gv('date') || rec.date;
+  const todayStr = toDateStr(new Date());
+  let finalStatus = rec.status || 'completed';
+  if (newDate > todayStr) finalStatus = 'planned'; 
+
   const updated = {...rec,
+    date: newDate,
     weight: parseFloat(gv('weight'))||0, reps: parseInt(gv('reps'))||0, sets: parseInt(gv('sets'))||1,
     duration: gv('duration')||rec.duration, distance: parseFloat(gv('distance'))||0,
     level: parseInt(gv('level'))||0, notes: gv('notes')||'', link: gv('link')||'',
-    status: rec.status || 'completed' // 👈 保留原本狀態
+    status: finalStatus
   };
   updated.points = calcPoints(updated);
 
