@@ -877,7 +877,7 @@ async function pasteWorkout(dateStr) {
     const todayStr = toDateStr(new Date());
     const isFuture = dateStr > todayStr;
     
-    const promises = clipboardWorkout.map(srcRec => {
+   const promises = clipboardWorkout.map(srcRec => {
       const newRec = {
         record_type: 'workout',
         date: dateStr,
@@ -890,6 +890,7 @@ async function pasteWorkout(dateStr) {
         distance: srcRec.distance || 0,
         level: srcRec.level || 0,
         notes: srcRec.notes || '',
+        link: srcRec.link || '', 
         points: srcRec.points || 0,
         reward_id: '', used: false, redeemed_at: '',
         user_name: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : '',
