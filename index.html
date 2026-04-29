@@ -515,9 +515,14 @@ let calHtml = `<div class="relative flex items-center justify-center mb-3 min-h-
   calHtml += '</div><div class="grid grid-cols-7 gap-1">';
 
   for(let i=0; i<firstDay; i++) calHtml += '<div></div>';
-  for(let d=1; d<=daysInMonth; d++) {
+ for(let d=1; d<=daysInMonth; d++) {
     const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dayWorkouts = byDate[dateStr] || [];
+    
+    // 🔍 新增：檢查呢日有無星星或心心標記
+    const daySpecials = allRecords.filter(r => r.record_type === 'special_day' && r.date === dateStr);
+    const cellHasStar = daySpecials.some(r => r.icon_type === 'star');
+    const cellHasHeart = daySpecials.some(r => r.icon_type === 'heart');
     const isToday = dateStr === toDateStr(new Date());
     const isSelected = dateStr === selectedDate;
     const hasFW = dayWorkouts.length > 0;
@@ -584,8 +589,14 @@ let calHtml = `<div class="relative flex items-center justify-center mb-3 min-h-
       tagHtml += `<span class="text-[10px] font-bold bg-slate-200 text-slate-600 px-1 py-0.5 rounded-full flex-shrink-0">+${hiddenCount}</span>`;
     }
 
-    calHtml += `<button onclick="selectDate('${dateStr}')" oncontextmenu="return false;" class="rounded-xl p-1 h-20 flex flex-col items-start justify-start transition-all overflow-hidden ${isSelected?'bg-[#70a7ff] text-white shadow-md':isToday?'bg-sky2 ring-2 ring-primary':'bg-white hover:bg-[#f2faff]'} ${hasFW?'ring-1 ring-sky3':''} ${clipboardMode?'ring-1 ring-green-400 cursor-copy':''}">
-      <span class="text-xs font-bold ${isSelected?'text-white':isToday?'text-primary':'text-slate-700'}">${d}</span>
+calHtml += `<button onclick="selectDate('${dateStr}')" oncontextmenu="return false;" class="rounded-xl p-1 h-20 flex flex-col items-start justify-start transition-all overflow-hidden ${isSelected?'bg-[#70a7ff] text-white shadow-md':isToday?'bg-sky2 ring-2 ring-primary':'bg-white hover:bg-[#f2faff]'} ${hasFW?'ring-1 ring-sky3':''} ${clipboardMode?'ring-1 ring-green-400 cursor-copy':''}">
+      <div class="flex justify-between items-start w-full">
+        <span class="text-xs font-bold ${isSelected?'text-white':isToday?'text-primary':'text-slate-700'}">${d}</span>
+        <div class="flex gap-0.5">
+          ${cellHasStar ? `<i data-lucide="star" class="w-2.5 h-2.5 ${isSelected?'text-white':'text-warm3'} fill-current"></i>` : ''}
+          ${cellHasHeart ? `<i data-lucide="heart" class="w-2.5 h-2.5 ${isSelected?'text-white':'text-pink-500'} fill-current"></i>` : ''}
+        </div>
+      </div>
       <div class="flex flex-wrap gap-0.5 mt-0.5 w-full overflow-hidden flex-1 content-start">${tagHtml}</div>
     </button>`;
   }
@@ -593,13 +604,27 @@ let calHtml = `<div class="relative flex items-center justify-center mb-3 min-h-
 
   // Selected date detail
   let detailHtml = '';
-  if(selectedDate) {
+if(selectedDate) {
     const dayW = byDate[selectedDate]||[];
+    
+    // 🔍 新增：檢查選中日子嘅標記狀態
+    const daySpecials = allRecords.filter(r => r.record_type === 'special_day' && r.date === selectedDate);
+    const dateHasStar = daySpecials.some(r => r.icon_type === 'star');
+    const dateHasHeart = daySpecials.some(r => r.icon_type === 'heart');
+
     detailHtml = `<div class="mt-4 bg-white rounded-2xl shadow-sm p-4 card-enter">
       <div class="flex items-center justify-between mb-3">
         <h3 class="font-bold text-primary text-lg">${selectedDate}</h3>
-        <div class="flex gap-2">
-          <button onclick="openAddWorkout('${selectedDate}')" class="bg-primary text-white px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1 hover:bg-primaryDk transition">
+        <div class="flex gap-1.5 items-center">
+          <button onclick="toggleSpecialDay('${selectedDate}', 'star')" class="p-2 rounded-xl transition-all ${dateHasStar ? 'bg-warm1 text-warm3 shadow-sm' : 'bg-slate-50 text-slate-300 hover:bg-sky1'}">
+            <i data-lucide="star" class="w-4 h-4 ${dateHasStar ? 'fill-current' : ''}"></i>
+          </button>
+          <button onclick="toggleSpecialDay('${selectedDate}', 'heart')" class="p-2 rounded-xl transition-all ${dateHasHeart ? 'bg-pink-50 text-pink-500 shadow-sm' : 'bg-slate-50 text-slate-300 hover:bg-pink-50'}">
+            <i data-lucide="heart" class="w-4 h-4 ${dateHasHeart ? 'fill-current' : ''}"></i>
+          </button>
+
+          <button onclick="openAddWorkout('${selectedDate}')" class="bg-primary text-white px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1 hover:bg-primaryDk transition ml-1">
+          
             <i data-lucide="plus" class="w-4 h-4"></i> 新增
           </button>
           ${clipboardMode ? `<button onclick="cancelClipboard()" class="bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl text-sm font-bold hover:bg-slate-300 transition">取消複製</button>` : ''}
@@ -2459,6 +2484,30 @@ window.submitChallenge = async (fUid, fName) => {
 };
 
 lucide.createIcons();
+
+   // --- 新增：切換特別日子標記 (星星/心心) ---
+window.toggleSpecialDay = async (date, type) => {
+  const existing = allRecords.find(r => r.record_type === 'special_day' && r.date === date && r.icon_type === type);
+  
+  try {
+    if (existing) {
+      // 如果已經有，就刪除佢 (Toggle Off)
+      await db.collection("users").doc(currentUser.uid).collection("records").doc(existing.__backendId).delete();
+    } else {
+      // 如果未有，就新增一筆
+      await db.collection("users").doc(currentUser.uid).collection("records").add({
+        record_type: 'special_day',
+        date: date,
+        icon_type: type,
+        timestamp: new Date().toISOString()
+      });
+    }
+    // Snapshot 會自動觸發 renderCalendar，所以唔駛手動 refresh
+  } catch (e) {
+    console.error(e);
+    showToast('標記失敗，請檢查網絡', 'error');
+  }
+};
 </script>
 </body>
 </html>
